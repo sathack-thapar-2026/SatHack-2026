@@ -12,7 +12,7 @@ import { ArrowRight } from "lucide-react";
 export default function HomePage() {
   return (
     <div className="relative min-h-screen bg-transparent text-[var(--text-primary)] flex flex-col transition-colors duration-500 selection:bg-cyan-500/25 selection:text-cyan-600 dark:selection:text-cyan-300">
-      {/* Cinematic Animated Hills Landscape with Sky, Stars, Mist & Interconnected Webstrips */}
+      {/* Cinematic Ethereal Void with Glowing Flowing Lines & Ambient Lighting */}
       <HillsLandscapeBackground />
 
       <Navbar />
