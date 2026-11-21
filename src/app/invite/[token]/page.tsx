@@ -20,7 +20,7 @@ import {
   ArrowLeft,
   Sparkles,
 } from "lucide-react";
-import { useDashboard } from "@/lib/dashboard-store";
+import { DashboardProvider, useDashboard } from "@/lib/dashboard-store";
 import { ProjectContract, MilestoneOSUser, extractBaseCode } from "@/lib/dashboard-data";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -368,7 +368,9 @@ export default function InvitePage(props: InvitePageProps) {
         </div>
       }
     >
-      <InvitePageContent params={props.params} />
+      <DashboardProvider>
+        <InvitePageContent params={props.params} />
+      </DashboardProvider>
     </Suspense>
   );
 }
