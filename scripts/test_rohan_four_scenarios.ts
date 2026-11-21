@@ -402,9 +402,9 @@ async function run() {
   assert(strangerDirect.status === 404, "Stranger direct project access returns 404");
 
   // =========================================================================
-  // INTEGRITY CHECK: Genuine PayPal Captures
+  // INTEGRITY CHECK: Genuine Payment Captures
   // =========================================================================
-  console.log("\n▶ INTEGRITY CHECK: Verify Genuine PayPal Captures are Untouched");
+  console.log("\n▶ INTEGRITY CHECK: Verify Genuine Payment Captures are Untouched");
   const { data: genuineTxs } = await supabase
     .from("transactions")
     .select("id, paypal_transaction_id, amount, status")
@@ -414,8 +414,8 @@ async function run() {
   const tx2400 = genuineTxs.find((t) => t.paypal_transaction_id === "90U44122NS995343N");
   const tx100 = genuineTxs.find((t) => t.paypal_transaction_id === "69K81424J7095031B");
 
-  assert(Boolean(tx2400 && Number(tx2400.amount) === 2400), "PayPal $2,400 capture 90U44122NS995343N intact", tx2400);
-  assert(Boolean(tx100 && Number(tx100.amount) === 100), "PayPal $100 capture 69K81424J7095031B intact", tx100);
+  assert(Boolean(tx2400 && Number(tx2400.amount) === 2400), "Payment $2,400 capture 90U44122NS995343N intact", tx2400);
+  assert(Boolean(tx100 && Number(tx100.amount) === 100), "Payment $100 capture 69K81424J7095031B intact", tx100);
 
   // Clean up test projects
   console.log("\n🧹 Cleaning up test scenario projects...");

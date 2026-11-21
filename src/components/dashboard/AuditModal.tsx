@@ -29,7 +29,7 @@ import {
   AlertOctagon,
 } from "lucide-react";
 import { Milestone, ProjectContract, getFriendlyCriterionStatus, AIAssessment, formatCurrency } from "@/lib/dashboard-data";
-import { GitHubIcon, PayPalIcon } from "./icons";
+import { GitHubIcon, PaymentIcon } from "./icons";
 import { useDashboard } from "@/lib/dashboard-store";
 
 interface AuditModalProps {
@@ -38,7 +38,7 @@ interface AuditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenRevisionModal?: () => void;
-  onOpenPayPalModal?: () => void;
+  onOpenPaymentModal?: () => void;
   onOpenSubmissionModal?: () => void;
 }
 
@@ -48,7 +48,7 @@ export default function AuditModal({
   isOpen,
   onClose,
   onOpenRevisionModal,
-  onOpenPayPalModal,
+  onOpenPaymentModal,
   onOpenSubmissionModal,
 }: AuditModalProps) {
   const { role, approveMilestone, setMilestoneAudit } = useDashboard();
@@ -671,8 +671,8 @@ export default function AuditModal({
                       onClick={() => {
                         approveMilestone(project.id, milestone.id);
                         onClose();
-                        if (onOpenPayPalModal) {
-                          onOpenPayPalModal();
+                        if (onOpenPaymentModal) {
+                          onOpenPaymentModal();
                         }
                       }}
                       className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-500 cursor-pointer flex items-center gap-1.5 transition-colors shadow-xs"
@@ -685,17 +685,17 @@ export default function AuditModal({
 
                 {(milestone.status === "approved" ||
                   milestone.status === "payment_pending") &&
-                  onOpenPayPalModal && (
+                  onOpenPaymentModal && (
                     <button
                       type="button"
                       onClick={() => {
                         onClose();
-                        onOpenPayPalModal();
+                        onOpenPaymentModal();
                       }}
                       className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-500 cursor-pointer flex items-center gap-1.5 transition-colors shadow-xs"
                     >
-                      <PayPalIcon className="h-4 w-4" />
-                      <span>Pay {formatCurrency(milestone.amount, milestone.currency || project.currency)} with PayPal Sandbox</span>
+                      <PaymentIcon className="h-4 w-4" />
+                      <span>Pay {formatCurrency(milestone.amount, milestone.currency || project.currency)} with Secure Payments</span>
                     </button>
                   )}
               </>

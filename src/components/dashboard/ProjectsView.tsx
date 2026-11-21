@@ -414,7 +414,7 @@ export default function ProjectsView({
 
             <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 self-start sm:self-auto">
               <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Paid via PayPal Sandbox</span>
+              <span>Paid via Secure Payments</span>
             </span>
           </div>
 
@@ -488,7 +488,7 @@ export default function ProjectsView({
                         <span className="text-[11px] text-slate-400">Milestones:</span>
                         <span className="font-semibold text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                           <CheckCircle2 className="h-3 w-3" />
-                          <span>All {project.milestones.length} stages paid via PayPal</span>
+                          <span>All {project.milestones.length} stages paid via secure payments</span>
                         </span>
                       </div>
                     </div>

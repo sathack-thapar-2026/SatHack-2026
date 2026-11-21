@@ -33,23 +33,12 @@ import { isSupabaseConfigured, getSupabaseClient } from "@/lib/supabase";
 type AuthMode = "login" | "signup";
 type UserRole = "client" | "freelancer" | "both";
 
-function PayPalIcon({ className = "h-4 w-4" }: { className?: string }) {
+function PaymentIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="none">
-      <path
-        d="M7.076 21.337H3.45a.75.75 0 0 1-.742-.864L5.61 3.535A.75.75 0 0 1 6.35 2.9h6.814c3.483 0 5.86 1.767 5.485 5.09-.345 3.056-2.52 4.793-5.46 4.793H10.19l-1.09 6.88a.75.75 0 0 1-.741.674h-1.283z"
-        fill="#003087"
-      />
-      <path
-        d="M9.19 14.547h2.999c3.085 0 5.372-1.828 5.735-5.044.348-3.08-1.848-4.717-5.082-4.717H7.433a.75.75 0 0 0-.741.635l-2.4 15.25a.75.75 0 0 0 .741.865h3.626l.531-6.989z"
-        fill="#0079C1"
-        opacity="0.9"
-      />
-      <path
-        d="M10.19 14.547l-1.09 6.88a.75.75 0 0 1-.741.674H4.732a.75.75 0 0 1-.741-.865L5.61 9.487a.75.75 0 0 1 .741-.635h3.839c3.234 0 5.43 1.637 5.082 4.717-.363 3.216-2.65 5.044-5.735 5.044H10.19l-.531 6.989"
-        fill="#00457C"
-        opacity="0.3"
-      />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2.5" />
+      <path d="M2 10h20" />
+      <path d="M6 15h4" />
     </svg>
   );
 }
@@ -186,8 +175,8 @@ function AuthForm() {
     }, 350);
   };
 
-  // Instant PayPal Authentication
-  const handlePayPalInstantAuth = () => {
+  // Instant Quick Access Authentication
+  const handleQuickAccessAuth = () => {
     setLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
@@ -196,7 +185,7 @@ function AuthForm() {
     setTimeout(() => {
       setLoading(false);
       setSuccessMsg(
-        `Authenticated with PayPal account. Redirecting to workspace...`
+        `Authenticated with payout account. Redirecting to workspace...`
       );
       setTimeout(() => {
         router.push(returnUrl);
@@ -612,15 +601,15 @@ function AuthForm() {
           </button>
         </form>
 
-        {/* ONE-CLICK PAYPAL (Fast Sandbox Access) */}
+        {/* ONE-CLICK QUICK ACCESS (Fast Sandbox Access) */}
         <div className="mt-3.5">
           <button
             type="button"
-            onClick={handlePayPalInstantAuth}
+            onClick={handleQuickAccessAuth}
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-300/60 bg-white/60 hover:bg-white/90 px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:shadow-xs transition-all hover:scale-[1.005] active:scale-[0.99] dark:border-white/10 dark:bg-[#131c31]/50 dark:text-slate-200 dark:hover:bg-[#1a2642]/75 backdrop-blur-md cursor-pointer"
           >
-            <PayPalIcon className="h-3.5 w-3.5" />
+            <PaymentIcon className="h-3.5 w-3.5" />
             <span>Continue with Instant Sandbox</span>
           </button>
         </div>
@@ -690,7 +679,7 @@ export default function AuthPage() {
       */}
       <WebThreadsController />
 
-      {/* AMBIENT FLANK LIGHTING: Softly frames the left and right margins with rich PayPal blue ambiance */}
+      {/* AMBIENT FLANK LIGHTING: Softly frames the left and right margins with rich brand blue ambiance */}
       <div className="fixed inset-y-0 left-0 w-72 sm:w-96 bg-gradient-to-r from-blue-200/25 via-sky-100/15 to-transparent pointer-events-none z-0 dark:from-blue-900/15 dark:via-sky-950/5 dark:to-transparent" />
       <div className="fixed inset-y-0 right-0 w-72 sm:w-96 bg-gradient-to-l from-sky-200/25 via-blue-100/10 to-transparent pointer-events-none z-0 dark:from-sky-900/15 dark:via-blue-950/5 dark:to-transparent" />
 

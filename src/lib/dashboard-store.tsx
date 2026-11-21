@@ -239,7 +239,7 @@ interface DashboardContextType {
   requestChanges: (projectId: string, milestoneId: string, reason: string) => void;
   approveMilestone: (projectId: string, milestoneId: string) => void;
   setMilestoneAudit: (projectId: string, milestoneId: string, audit: AIAssessment) => void;
-  releasePayPalPayment: (projectId: string, milestoneId: string, verifiedCaptureId: string) => string;
+  releasePayment: (projectId: string, milestoneId: string, verifiedCaptureId: string) => string;
   makePayment: (projectId: string, milestoneId: string, verifiedCaptureId: string, timestamp?: string) => string;
   markNotificationRead: (id: string) => void;
   clearAllNotifications: () => void;
@@ -1780,7 +1780,7 @@ export function DashboardProvider({
     );
   };
 
-  const releasePayPalPayment = (projectId: string, milestoneId: string, verifiedCaptureId: string): string => {
+  const releasePayment = (projectId: string, milestoneId: string, verifiedCaptureId: string): string => {
     return makePayment(projectId, milestoneId, verifiedCaptureId);
   };
 
@@ -1793,7 +1793,7 @@ export function DashboardProvider({
     if (!verifiedCaptureId || verifiedCaptureId.startsWith("PAYID-SBX-") && verifiedCaptureId.endsWith("-Q")) {
       // Reject any simulated/fake capture IDs
       if (!verifiedCaptureId) {
-        throw new Error("Cannot record payment without a verified PayPal capture confirmation.");
+        throw new Error("Cannot record payment without a verified payment capture confirmation.");
       }
     }
 
@@ -1831,7 +1831,7 @@ export function DashboardProvider({
             ...m,
             status: "paid" as MilestoneStatus,
             paidAt: nowStr,
-            paypalTransactionId: txId,
+            transactionId: txId,
           };
         });
 
@@ -1845,7 +1845,7 @@ export function DashboardProvider({
                 id: `act_completed_${Date.now()}`,
                 timestamp: "Just now",
                 actor: "MilestoneOS",
-                actorRole: "paypal",
+                actorRole: "payment",
                 action: `Project "${project.title}" completed! All ${updatedMilestones.length} milestones paid and fully settled.`,
                 details: `100% of milestones completed. Total payout: $${(project.totalPaid + paidAmount).toLocaleString()} USD.`,
               },
@@ -1864,7 +1864,7 @@ export function DashboardProvider({
               id: `act_${Date.now()}`,
               timestamp: "Just now",
               actor: project.client.name,
-              actorRole: "paypal",
+              actorRole: "payment",
               action: `Completed payment of $${paidAmount.toLocaleString()} USD via Escrow`,
               details: `Transaction: ${txId}`,
               milestoneTitle,
@@ -1885,7 +1885,7 @@ export function DashboardProvider({
       amount: paidAmount,
       currency: "USD",
       paidAt: nowStr,
-      paypalTransactionId: txId,
+      transactionId: txId,
       status: "completed",
       isSimulated: true,
       payer: clientName,
@@ -1978,7 +1978,7 @@ export function DashboardProvider({
         requestChanges,
         approveMilestone,
         setMilestoneAudit,
-        releasePayPalPayment,
+        releasePayment,
         makePayment,
         markNotificationRead,
         clearAllNotifications,

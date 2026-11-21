@@ -18,12 +18,12 @@ import {
   Play,
   Receipt,
 } from "lucide-react";
-import { PayPalIcon } from "./icons";
+import { PaymentIcon } from "./icons";
 
 interface MilestonesViewProps {
   onOpenAudit: (project: ProjectContract, milestone: Milestone) => void;
   onOpenSubmission: (project: ProjectContract, milestone: Milestone) => void;
-  onOpenPayPal: (project: ProjectContract, milestone: Milestone) => void;
+  onOpenPayment: (project: ProjectContract, milestone: Milestone) => void;
   onOpenRevision?: (project: ProjectContract, milestone: Milestone) => void;
   onOpenInvoice?: (project: ProjectContract, milestone: Milestone, transactionId?: string) => void;
   onSelectProject: (projectId: string) => void;
@@ -42,7 +42,7 @@ const STATUS_FILTERS: { id: string; label: string }[] = [
 export default function MilestonesView({
   onOpenAudit,
   onOpenSubmission,
-  onOpenPayPal,
+  onOpenPayment,
   onOpenRevision,
   onOpenInvoice,
   onSelectProject,
@@ -383,11 +383,11 @@ export default function MilestonesView({
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      onOpenPayPal(project, milestone);
+                                      onOpenPayment(project, milestone);
                                     }}
                                     className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 cursor-pointer flex items-center gap-1.5 transition-colors shadow-xs"
                                   >
-                                    <PayPalIcon className="h-3.5 w-3.5" />
+                                    <PaymentIcon className="h-3.5 w-3.5" />
                                     <span>Pay Now</span>
                                   </button>
                                 )}
@@ -409,7 +409,7 @@ export default function MilestonesView({
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          onOpenInvoice(project, milestone, milestone.paypalTransactionId);
+                                          onOpenInvoice(project, milestone, milestone.transactionId);
                                         }}
                                         className="text-xs font-semibold text-[#0070BA] dark:text-sky-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
                                       >
@@ -495,7 +495,7 @@ export default function MilestonesView({
                                         type="button"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          onOpenInvoice(project, milestone, milestone.paypalTransactionId);
+                                          onOpenInvoice(project, milestone, milestone.transactionId);
                                         }}
                                         className="text-xs font-semibold text-[#0070BA] dark:text-sky-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
                                       >

@@ -27,9 +27,9 @@ export default function FeaturesGrid() {
     },
     {
       icon: ShieldCheck,
-      title: "Official PayPal Sandbox Architecture",
+      title: "Official Secure Payment Architecture",
       tag: "Payments Integration",
-      desc: "Built directly on PayPal Orders v2 with server-side capture verification, sandbox buyer accounts, and negative-testing safeguards.",
+      desc: "Built directly on Payments API with server-side capture verification, sandbox buyer accounts, and negative-testing safeguards.",
     },
     {
       icon: FileCheck2,
@@ -41,7 +41,7 @@ export default function FeaturesGrid() {
       icon: Activity,
       title: "Anti-Dispute Audit Trail",
       tag: "Permanent Proof",
-      desc: "Every milestone agreement, deliverable hash, AI report timestamp, and PayPal capture ID is recorded in an immutable project log.",
+      desc: "Every milestone agreement, deliverable hash, AI report timestamp, and payment capture ID is recorded in an immutable project log.",
     },
     {
       icon: Layers,
@@ -123,7 +123,7 @@ export default function FeaturesGrid() {
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-                  <span>Pay milestone tranches with one click via PayPal Checkout</span>
+                  <span>Pay milestone tranches with one click via Secure Checkout</span>
                 </li>
               </ul>
             </div>
@@ -153,7 +153,7 @@ export default function FeaturesGrid() {
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span>Predictable payments deposited via PayPal upon client sign-off</span>
+                  <span>Predictable payments deposited via secure payments upon client sign-off</span>
                 </li>
               </ul>
             </div>

@@ -101,7 +101,7 @@ export interface Milestone {
   dueDate: string;
   status: MilestoneStatus;
   paidAt?: string;
-  paypalTransactionId?: string;
+  transactionId?: string;
   acceptanceCriteria: AcceptanceCriterion[];
   submissions: MilestoneSubmission[];
   latestAudit?: AIAssessment;
@@ -111,7 +111,7 @@ export interface ActivityItem {
   id: string;
   timestamp: string;
   actor: string;
-  actorRole: "client" | "freelancer" | "ai_system" | "paypal";
+  actorRole: "client" | "freelancer" | "ai_system" | "payment";
   action: string;
   details?: string;
   milestoneTitle?: string;
@@ -126,7 +126,7 @@ export interface TransactionRecord {
   amount: number;
   currency: string;
   paidAt: string;
-  paypalTransactionId: string;
+  transactionId: string;
   status: "completed" | "pending";
   isSimulated: boolean;
   payer: string;
@@ -646,8 +646,8 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
     isDemo: true,
     clientId: "usr_client_sarah",
     freelancerId: "253b60b8-a9e0-4d3d-96af-618f78c1bf80",
-    title: "Online Storefront & PayPal Checkout",
-    description: "A custom online store with shopping cart and secure PayPal checkout.",
+    title: "Online Storefront & Secure Checkout",
+    description: "A custom online store with shopping cart and secure secure checkout.",
     category: "Web Development",
     client: {
       id: "usr_client_sarah",
@@ -683,7 +683,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
         timestamp: "Nov 02, 2026 • 04:30 PM",
         actor: "Sarah Chen",
         actorRole: "client",
-        action: "Paid Milestone 1 ($1,200 USD via PayPal Sandbox)",
+        action: "Paid Milestone 1 ($1,200 USD via Secure Payments)",
         milestoneTitle: "Design & Page Layouts",
       },
       {
@@ -722,7 +722,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
         dueDate: "Nov 02, 2026",
         status: "paid",
         paidAt: "Nov 02, 2026 at 4:30 PM",
-        paypalTransactionId: "PAYID-SBX-109283-A",
+        transactionId: "PAYID-SBX-109283-A",
         acceptanceCriteria: [
           {
             id: "ac_1_1",
@@ -757,7 +757,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
         id: "ms_02",
         stageNumber: 2,
         title: "Shopping Cart & Checkout Flow",
-        description: "Add to cart, quantity adjustments, and PayPal checkout button integration.",
+        description: "Add to cart, quantity adjustments, and secure checkout button integration.",
         amount: 1400,
         currency: "USD",
         dueDate: "Nov 12, 2026",
@@ -781,11 +781,11 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
           },
           {
             id: "ac_2_3",
-            title: "PayPal checkout button on payment screen",
-            description: "PayPal button opens checkout modal cleanly in test mode.",
+            title: "secure checkout button on payment screen",
+            description: "payment button opens checkout modal cleanly in test mode.",
             status: "met",
-            evidence: "PayPal button loads cleanly and triggers approval popup.",
-            aiNotes: "Checkout button connects to PayPal Sandbox.",
+            evidence: "payment button loads cleanly and triggers approval popup.",
+            aiNotes: "Checkout button connects to Secure Payments.",
           },
         ],
         submissions: [
@@ -797,7 +797,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
             demoUrl: "https://staging.online-storefront.demo/checkout",
             githubRepo: "https://github.com/rohan-dev/online-storefront",
             loomVideo: "https://loom.com/share/cart-checkout-demo",
-            notes: "Cart and checkout flow is ready. Tested payment flow with PayPal Sandbox.",
+            notes: "Cart and checkout flow is ready. Tested payment flow with Secure Payments.",
             aiAssessment: {
               overallScore: 96,
               summary: "Automated work review checked the code and staging site. All 3 requirements were met.",
@@ -821,8 +821,8 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
                 },
                 {
                   id: "ac_2_3",
-                  title: "PayPal checkout button on payment screen",
-                  description: "PayPal button works.",
+                  title: "secure checkout button on payment screen",
+                  description: "payment button works.",
                   status: "met",
                   evidence: "Button opens sandbox window properly.",
                 },
@@ -853,8 +853,8 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
             },
             {
               id: "ac_2_3",
-              title: "PayPal checkout button on payment screen",
-              description: "PayPal button works.",
+              title: "secure checkout button on payment screen",
+              description: "payment button works.",
               status: "met",
               evidence: "Button opens sandbox window properly.",
             },
@@ -976,7 +976,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
         timestamp: "Nov 04, 2026 • 05:00 PM",
         actor: "Sarah Chen",
         actorRole: "client",
-        action: "Paid Milestone 1 ($2,000 USD via PayPal Sandbox)",
+        action: "Paid Milestone 1 ($2,000 USD via Secure Payments)",
         milestoneTitle: "Review Form & Star Ratings",
       },
       {
@@ -999,7 +999,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
         dueDate: "Nov 04, 2026",
         status: "paid",
         paidAt: "Nov 04, 2026 at 5:00 PM",
-        paypalTransactionId: "PAYID-SBX-882319-B",
+        transactionId: "PAYID-SBX-882319-B",
         acceptanceCriteria: [
           {
             id: "ac_rev_1",
@@ -1209,7 +1209,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
     isDemo: true,
     clientId: "usr_client_sarah",
     freelancerId: "253b60b8-a9e0-4d3d-96af-618f78c1bf80",
-    title: "Mobile App & PayPal Subscription Billing",
+    title: "Mobile App & Subscription Billing",
     description: "Recurring monthly billing integration, automated PDF invoices, and account dashboard for iOS and Android.",
     category: "FinTech & Mobile Development",
     client: {
@@ -1253,7 +1253,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
         timestamp: "Oct 07, 2026 • 03:15 PM",
         actor: "Sarah Chen",
         actorRole: "client",
-        action: "Paid Milestone 1 ($1,000 USD via PayPal Sandbox)",
+        action: "Paid Milestone 1 ($1,000 USD via Secure Payments)",
         milestoneTitle: "Subscription Tier Architecture & Database Schema",
       },
       {
@@ -1261,15 +1261,15 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
         timestamp: "Oct 15, 2026 • 05:40 PM",
         actor: "Sarah Chen",
         actorRole: "client",
-        action: "Paid Milestone 2 ($1,200 USD via PayPal Sandbox)",
-        milestoneTitle: "PayPal Subscriptions API Integration & Webhooks",
+        action: "Paid Milestone 2 ($1,200 USD via Secure Payments)",
+        milestoneTitle: "Subscriptions API Integration & Webhooks",
       },
       {
         id: "act_304",
         timestamp: "Oct 24, 2026 • 11:20 AM",
         actor: "Sarah Chen",
         actorRole: "client",
-        action: "Final payment sent ($1,000 USD via PayPal). Project 100% completed!",
+        action: "Final payment sent ($1,000 USD via secure payments). Project 100% completed!",
         milestoneTitle: "Automated Invoicing & Customer Self-Serve Portal",
       },
     ],
@@ -1284,7 +1284,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
         dueDate: "Oct 08, 2026",
         status: "paid",
         paidAt: "Oct 07, 2026 at 3:15 PM",
-        paypalTransactionId: "PAYID-SBX-782190-A",
+        transactionId: "PAYID-SBX-782190-A",
         acceptanceCriteria: [
           {
             id: "ac_sub_1_1",
@@ -1316,18 +1316,18 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
       {
         id: "ms_sub_02",
         stageNumber: 2,
-        title: "PayPal Subscriptions API Integration & Webhooks",
-        description: "Integration with PayPal Subscriptions API, plan billing cycles, and automated webhook event handling.",
+        title: "Subscriptions API Integration & Webhooks",
+        description: "Integration with Subscriptions API, plan billing cycles, and automated webhook event handling.",
         amount: 1200,
         currency: "USD",
         dueDate: "Oct 16, 2026",
         status: "paid",
         paidAt: "Oct 15, 2026 at 5:40 PM",
-        paypalTransactionId: "PAYID-SBX-782191-B",
+        transactionId: "PAYID-SBX-782191-B",
         acceptanceCriteria: [
           {
             id: "ac_sub_2_1",
-            title: "PayPal recurring billing button",
+            title: "Recurring billing button",
             description: "Frontend checkout presents recurring monthly subscription authorization.",
             status: "met",
             evidence: "Successfully processed sandbox recurring plans.",
@@ -1348,7 +1348,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
             submittedBy: "Rohan Verma",
             demoUrl: "https://staging.apex-commerce.demo/subscribe",
             githubRepo: "https://github.com/rohan-dev/subscription-backend",
-            notes: "PayPal Sandbox recurring subscription flow fully integrated.",
+            notes: "Secure Payments recurring subscription flow fully integrated.",
           },
         ],
       },
@@ -1362,7 +1362,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
         dueDate: "Oct 24, 2026",
         status: "paid",
         paidAt: "Oct 24, 2026 at 11:20 AM",
-        paypalTransactionId: "PAYID-SBX-782192-C",
+        transactionId: "PAYID-SBX-782192-C",
         acceptanceCriteria: [
           {
             id: "ac_sub_3_1",
@@ -1411,7 +1411,7 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     isDemo: true,
     timestamp: "10 mins ago",
     title: "Work Submitted for Review",
-    message: "Rohan Verma submitted Milestone 2 for 'Online Storefront & PayPal Checkout'.",
+    message: "Rohan Verma submitted Milestone 2 for 'Online Storefront & Secure Checkout'.",
     type: "submission",
     unread: true,
     projectId: "proj_online_store_2026",
@@ -1444,7 +1444,7 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     isDemo: true,
     timestamp: "3 days ago",
     title: "Payment Completed",
-    message: "$1,200 USD paid to Rohan Verma via PayPal Sandbox.",
+    message: "$1,200 USD paid to Rohan Verma via Secure Payments.",
     type: "payment",
     unread: false,
     projectId: "proj_online_store_2026",
@@ -1459,11 +1459,11 @@ export const INITIAL_TRANSACTIONS: TransactionRecord[] = [
     milestoneId: "ms_01",
     milestoneTitle: "Design & Page Layouts",
     projectId: "proj_online_store_2026",
-    projectTitle: "Online Storefront & PayPal Checkout",
+    projectTitle: "Online Storefront & Secure Checkout",
     amount: 1200,
     currency: "USD",
     paidAt: "Nov 02, 2026 at 4:30 PM",
-    paypalTransactionId: "PAYID-SBX-109283-A",
+    transactionId: "PAYID-SBX-109283-A",
     status: "completed",
     isSimulated: true,
     payer: "Sarah Chen (Apex Commerce)",
@@ -1479,7 +1479,7 @@ export const INITIAL_TRANSACTIONS: TransactionRecord[] = [
     amount: 2000,
     currency: "USD",
     paidAt: "Nov 04, 2026 at 5:00 PM",
-    paypalTransactionId: "PAYID-SBX-882319-B",
+    transactionId: "PAYID-SBX-882319-B",
     status: "completed",
     isSimulated: true,
     payer: "Sarah Chen (Apex Commerce)",
@@ -1491,11 +1491,11 @@ export const INITIAL_TRANSACTIONS: TransactionRecord[] = [
     milestoneId: "ms_sub_01",
     milestoneTitle: "Subscription Tier Architecture & Database Schema",
     projectId: "proj_sub_billing_completed",
-    projectTitle: "Mobile App & PayPal Subscription Billing",
+    projectTitle: "Mobile App & Subscription Billing",
     amount: 1000,
     currency: "USD",
     paidAt: "Oct 07, 2026 at 3:15 PM",
-    paypalTransactionId: "PAYID-SBX-782190-A",
+    transactionId: "PAYID-SBX-782190-A",
     status: "completed",
     isSimulated: true,
     payer: "Sarah Chen (Apex Commerce)",
@@ -1505,13 +1505,13 @@ export const INITIAL_TRANSACTIONS: TransactionRecord[] = [
     id: "tx_104",
     isDemo: true,
     milestoneId: "ms_sub_02",
-    milestoneTitle: "PayPal Subscriptions API Integration & Webhooks",
+    milestoneTitle: "Subscriptions API Integration & Webhooks",
     projectId: "proj_sub_billing_completed",
-    projectTitle: "Mobile App & PayPal Subscription Billing",
+    projectTitle: "Mobile App & Subscription Billing",
     amount: 1200,
     currency: "USD",
     paidAt: "Oct 15, 2026 at 5:40 PM",
-    paypalTransactionId: "PAYID-SBX-782191-B",
+    transactionId: "PAYID-SBX-782191-B",
     status: "completed",
     isSimulated: true,
     payer: "Sarah Chen (Apex Commerce)",
@@ -1523,11 +1523,11 @@ export const INITIAL_TRANSACTIONS: TransactionRecord[] = [
     milestoneId: "ms_sub_03",
     milestoneTitle: "Automated Invoicing & Customer Self-Serve Portal",
     projectId: "proj_sub_billing_completed",
-    projectTitle: "Mobile App & PayPal Subscription Billing",
+    projectTitle: "Mobile App & Subscription Billing",
     amount: 1000,
     currency: "USD",
     paidAt: "Oct 24, 2026 at 11:20 AM",
-    paypalTransactionId: "PAYID-SBX-782192-C",
+    transactionId: "PAYID-SBX-782192-C",
     status: "completed",
     isSimulated: true,
     payer: "Sarah Chen (Apex Commerce)",

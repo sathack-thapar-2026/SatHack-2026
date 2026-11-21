@@ -35,7 +35,7 @@ async function runMigration() {
       projectMap.set(p.id, p);
     } else {
       // If one version has a paid milestone or capture ID, preserve the paid one!
-      const hasPaid = p.milestones?.some((m: any) => m.status === "paid" || m.paypalTransactionId);
+      const hasPaid = p.milestones?.some((m: any) => m.status === "paid" || m.transactionId);
       if (hasPaid) {
         projectMap.set(p.id, { ...p, isDemo: p.isDemo ?? existing.isDemo ?? true });
       }
@@ -90,7 +90,7 @@ async function runMigration() {
   }
   console.log(`✓ Projects migrated: ${pSuccess} / ${projectsToMigrate.length}`);
 
-  // 2. Migrate Transactions (Preserving verified PayPal capture 90U44122NS995343N)
+  // 2. Migrate Transactions (Preserving verified payment capture 90U44122NS995343N)
   console.log(`\nMigrating ${db.transactions?.length || 0} transactions to public.transactions...`);
   let tSuccess = 0;
   for (const t of db.transactions || []) {
@@ -107,7 +107,7 @@ async function runMigration() {
       amount: t.amount,
       currency: t.currency || "USD",
       status: t.status || "completed",
-      paypal_transaction_id: t.paypalTransactionId,
+      paypal_transaction_id: t.transactionId,
       paid_at: t.paidAt || new Date().toISOString(),
       is_simulated: Boolean(t.isSimulated),
       is_demo: Boolean(t.isDemo),
@@ -119,8 +119,8 @@ async function runMigration() {
       console.error(`Failed to migrate transaction ${t.id}:`, error);
     } else {
       tSuccess++;
-      if (t.paypalTransactionId === "90U44122NS995343N") {
-        console.log(`  ★ VERIFIED: PayPal capture 90U44122NS995343N ($${t.amount} USD) migrated to Supabase!`);
+      if (t.transactionId === "90U44122NS995343N") {
+        console.log(`  ★ VERIFIED: payment capture 90U44122NS995343N ($${t.amount} USD) migrated to Supabase!`);
       }
     }
   }

@@ -264,20 +264,20 @@ async function run() {
   });
   assert(bobApproveRes.status === 403, "Bob milestone approval denied with HTTP 403 (client only)", bobApproveRes.status);
 
-  // Step 8: Verify PayPal Captures Intact
-  console.log("\n▶ Step 8: Verify PayPal Sandbox Captures Intact in Supabase");
+  // Step 8: Verify Payment Captures Intact
+  console.log("\n▶ Step 8: Verify Secure Payments Captures Intact in Supabase");
   const { data: genuineTxs, error: txErr } = await supabase
     .from("transactions")
     .select("id, paypal_transaction_id, amount, status")
     .in("paypal_transaction_id", ["90U44122NS995343N", "69K81424J7095031B"]);
 
-  assert(!txErr && genuineTxs && genuineTxs.length >= 2, "Genuine PayPal transactions intact in Supabase", genuineTxs);
+  assert(!txErr && genuineTxs && genuineTxs.length >= 2, "Genuine payment transactions intact in Supabase", genuineTxs);
   if (!genuineTxs) throw new Error("genuineTxs is null");
   const tx2400 = genuineTxs.find((t) => t.paypal_transaction_id === "90U44122NS995343N");
   const tx100 = genuineTxs.find((t) => t.paypal_transaction_id === "69K81424J7095031B");
 
-  assert(Boolean(tx2400 && Number(tx2400.amount) === 2400), "PayPal $2,400 USD capture 90U44122NS995343N intact", tx2400);
-  assert(Boolean(tx100 && Number(tx100.amount) === 100), "PayPal $100 USD capture 69K81424J7095031B intact", tx100);
+  assert(Boolean(tx2400 && Number(tx2400.amount) === 2400), "Payment $2,400 USD capture 90U44122NS995343N intact", tx2400);
+  assert(Boolean(tx100 && Number(tx100.amount) === 100), "Payment $100 USD capture 69K81424J7095031B intact", tx100);
 
   console.log("\n==================================================================");
   console.log("   🎉 ALL THREE-ACCOUNT WORKSPACE & PRIVACY TESTS PASSED 100%!    ");

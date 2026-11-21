@@ -677,7 +677,7 @@ export interface GeneratedInvoice {
   paymentDate: string;
   dueDate: string;
   status: "PAID" | "PENDING";
-  paypalTransactionId: string;
+  transactionId: string;
   paymentMethod: string;
   client: {
     name: string;
@@ -790,8 +790,8 @@ Return strictly valid JSON:
             paymentDate,
             dueDate: milestone.dueDate || "Completed",
             status: "PAID",
-            paypalTransactionId: txId,
-            paymentMethod: payment?.method || "PayPal Sandbox Escrow Settlement",
+            transactionId: txId,
+            paymentMethod: payment?.method || "Secure Milestone Settlement",
             client: {
               name: client.name,
               email: client.email,
@@ -838,8 +838,8 @@ Return strictly valid JSON:
     paymentDate,
     dueDate: milestone.dueDate || "Completed",
     status: "PAID",
-    paypalTransactionId: txId,
-    paymentMethod: payment?.method || "PayPal Sandbox Escrow Settlement",
+    transactionId: txId,
+    paymentMethod: payment?.method || "Secure Milestone Settlement",
     client: {
       name: client.name,
       email: client.email,

@@ -983,7 +983,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                     </div>
                     {currency === "INR" && (
                       <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
-                        Note: PayPal escrow checkout settles in USD. Contracts requiring PayPal funding should be denominated in USD.
+                        Note: Secure escrow checkout settles in USD. Contracts requiring checkout funding should be denominated in USD.
                       </p>
                     )}
                   </div>

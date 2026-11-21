@@ -102,7 +102,7 @@ export default function DashboardHeader({
           </div>
         </div>
 
-        {/* Right: User ID badge, PayPal Sandbox status, Notifications, New Project */}
+        {/* Right: User ID badge, Secure Payments status, Notifications, New Project */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Role ID Pill (Shared Base Code) */}
           <button

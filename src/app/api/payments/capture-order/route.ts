@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { capturePayPalOrder } from "@/server/paypal";
+import { capturePaymentOrder } from "@/server/payments";
 import { db } from "@/server/db";
 import { getServerSupabase } from "@/server/supabase";
 import { extractBaseCode } from "@/lib/dashboard-data";
@@ -75,14 +75,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Capture PayPal Order via server-to-server PayPal API call
-    const captureResult = await capturePayPalOrder(orderId);
+    // 3. Capture Payment Order via server-to-server payments API call
+    const captureResult = await capturePaymentOrder(orderId);
 
     // 4. Strict status verification: must be COMPLETED
     if (captureResult.status !== "COMPLETED") {
       return NextResponse.json(
         {
-          error: `PayPal payment capture did not complete. Status: ${captureResult.status}`,
+          error: `Payment capture did not complete. Status: ${captureResult.status}`,
           details: captureResult,
         },
         { status: 400 }
@@ -141,9 +141,9 @@ export async function POST(req: NextRequest) {
       project: updated.project,
     });
   } catch (err: any) {
-    console.error("PayPal Capture Order API Error:", err);
+    console.error("Payment Capture Order API Error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to capture PayPal order" },
+      { error: err.message || "Failed to capture payment order" },
       { status: 500 }
     );
   }

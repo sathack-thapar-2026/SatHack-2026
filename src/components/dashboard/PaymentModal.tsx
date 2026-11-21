@@ -14,12 +14,12 @@ import {
   Info,
 } from "lucide-react";
 import { Milestone, ProjectContract } from "@/lib/dashboard-data";
-import { PayPalIcon } from "./icons";
+import { PaymentIcon } from "./icons";
 import { useDashboard } from "@/lib/dashboard-store";
 import { getSupabaseClient } from "@/lib/supabase";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
-interface PayPalPaymentModalProps {
+interface PaymentModalProps {
   project: ProjectContract;
   milestone: Milestone;
   isOpen: boolean;
@@ -39,13 +39,13 @@ interface VerifiedReceipt {
   timestamp: string;
 }
 
-export default function PayPalPaymentModal({
+export default function PaymentModal({
   project,
   milestone,
   isOpen,
   onClose,
   onOpenInvoice,
-}: PayPalPaymentModalProps) {
+}: PaymentModalProps) {
   const { makePayment, authUser } = useDashboard();
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
   const [isCapturing, setIsCapturing] = useState(false);
@@ -108,7 +108,7 @@ export default function PayPalPaymentModal({
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/5">
           <div className="flex items-center gap-2">
-            <PayPalIcon className="h-5 w-5" />
+            <PaymentIcon className="h-5 w-5" />
             <h3 className="font-bold text-slate-900 dark:text-white text-base">
               Secure Escrow Checkout
             </h3>
@@ -218,7 +218,7 @@ export default function PayPalPaymentModal({
                 Authorized by Buyer • Capturing Payment...
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-                Executing server-side capture on PayPal Sandbox REST API and verifying escrow release.
+                Executing server-side capture on Secure Payments REST API and verifying escrow release.
               </p>
             </div>
           </div>
@@ -296,22 +296,22 @@ export default function PayPalPaymentModal({
               </div>
             )}
 
-            {/* Live PayPal SDK Buttons Container */}
+            {/* Live payment SDK Buttons Container */}
             {paymentState === "idle" && (
               <div className="space-y-3 pt-1">
                 {isINR ? (
                   <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs space-y-2">
                     <div className="flex items-center gap-2 font-bold text-sm text-amber-800 dark:text-amber-300">
                       <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                      <span>Currency Not Supported by PayPal</span>
+                      <span>Currency Not Supported by Checkout</span>
                     </div>
                     <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
                       This milestone contract is denominated in <strong>₹{contractAmount.toLocaleString()} INR (Indian Rupee)</strong>.
-                      PayPal Checkout Orders API does not support INR directly for escrow checkout.
+                      Secure Checkout Orders API does not support INR directly for escrow checkout.
                     </p>
                     <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
                       Per platform contract policy, silent or arbitrary currency conversions are prohibited.
-                      To fund this milestone via PayPal, the contract must be agreed and denominated in a supported PayPal settlement currency (such as <strong>USD</strong>).
+                      To fund this milestone via secure payments, the contract must be agreed and denominated in a supported payment settlement currency (such as <strong>USD</strong>).
                     </p>
                     <div className="pt-1 flex items-center gap-2">
                       <button
@@ -345,7 +345,7 @@ export default function PayPalPaymentModal({
                           setErrorMessage(null);
                           try {
                             const { headers, bodyData } = await getAuthPayload();
-                            const res = await fetch("/api/paypal/create-order", {
+                            const res = await fetch("/api/payments/create-order", {
                               method: "POST",
                               headers,
                               body: JSON.stringify({
@@ -356,7 +356,7 @@ export default function PayPalPaymentModal({
                             });
                             const data = await res.json();
                             if (!res.ok || !data.success || !data.order?.orderId) {
-                              const msg = data.error || "Failed to create PayPal Sandbox order.";
+                              const msg = data.error || "Failed to create Secure Payments order.";
                               setErrorMessage(msg);
                               setPaymentState("failed");
                               throw new Error(msg);
@@ -365,19 +365,19 @@ export default function PayPalPaymentModal({
                             return data.order.orderId;
                           } catch (err: any) {
                             setPaymentState("failed");
-                            setErrorMessage(err.message || "Failed to initiate PayPal order.");
+                            setErrorMessage(err.message || "Failed to initiate payment order.");
                             throw err;
                           }
                         }}
                         onApprove={async (data) => {
-                          // Payer approved in PayPal popup -> trigger backend capture
+                          // Payer approved in payment popup -> trigger backend capture
                           setPaymentState("awaiting_capture");
                           setIsCapturing(true);
                           setErrorMessage(null);
 
                           try {
                             const { headers, bodyData } = await getAuthPayload();
-                            const res = await fetch("/api/paypal/capture-order", {
+                            const res = await fetch("/api/payments/capture-order", {
                               method: "POST",
                               headers,
                               body: JSON.stringify({
@@ -397,13 +397,13 @@ export default function PayPalPaymentModal({
                             ) {
                               const errorMsg =
                                 captureData.error ||
-                                `PayPal capture failed with status: ${captureData.capture?.status || "UNKNOWN"}`;
+                                `payment capture failed with status: ${captureData.capture?.status || "UNKNOWN"}`;
                               setPaymentState("failed");
                               setErrorMessage(errorMsg);
                               return;
                             }
 
-                            // Genuine verified capture from PayPal Sandbox REST API!
+                            // Genuine verified capture from Secure Payments REST API!
                             const verified = captureData.capture;
                             const captureId = verified.captureId;
 
@@ -431,13 +431,13 @@ export default function PayPalPaymentModal({
                           }
                         }}
                         onCancel={async () => {
-                          // If popup closed unexpectedly, check if order was actually approved on PayPal
+                          // If popup closed unexpectedly, check if order was actually approved
                           if (createdOrderId) {
                             setPaymentState("awaiting_capture");
                             setIsCapturing(true);
                             try {
                               const { headers, bodyData } = await getAuthPayload();
-                              const res = await fetch("/api/paypal/capture-order", {
+                              const res = await fetch("/api/payments/capture-order", {
                                 method: "POST",
                                 headers,
                                 body: JSON.stringify({
@@ -474,10 +474,10 @@ export default function PayPalPaymentModal({
                           setErrorMessage("The checkout window was closed before completion. No funds were debited, and the milestone remains unpaid.");
                         }}
                         onError={(err) => {
-                          console.error("PayPal SDK Error:", err);
+                          console.error("payment SDK Error:", err);
                           setPaymentState("failed");
                           setErrorMessage(
-                            "PayPal checkout encountered an issue. Ensure you are using your PayPal Sandbox buyer account."
+                            "secure checkout encountered an issue. Ensure you are using your Secure Payments buyer account."
                           );
                         }}
                       />
@@ -487,10 +487,10 @@ export default function PayPalPaymentModal({
                   <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 text-xs space-y-1">
                     <div className="flex items-center gap-1.5 font-bold">
                       <AlertTriangle className="h-4 w-4 text-amber-600" />
-                      <span>PayPal Client ID Missing</span>
+                      <span>Payment Client ID Missing</span>
                     </div>
                     <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-                      Please define <code>NEXT_PUBLIC_PAYPAL_CLIENT_ID</code> in <code>.env.local</code> to render genuine PayPal checkout buttons.
+                      Please define the public payment client ID in <code>.env.local</code> to render genuine secure checkout buttons.
                     </p>
                   </div>
                 )}

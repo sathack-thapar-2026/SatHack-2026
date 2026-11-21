@@ -57,12 +57,12 @@ export async function POST(req: NextRequest) {
           submissions: milestone.submissions,
         },
         payment: {
-          transactionId: transactionId || milestone.paypalTransactionId,
+          transactionId: transactionId || milestone.transactionId,
           paidAt: milestone.paidAt,
           amount: milestone.amount,
           currency: milestone.currency || "USD",
           status: "completed",
-          method: "PayPal Sandbox Escrow Settlement",
+          method: "Secure Milestone Settlement",
         },
       };
     }

@@ -10,7 +10,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-export default function PayPalArchitectureSection() {
+export default function PaymentArchitectureSection() {
   const steps = [
     {
       num: "1",
@@ -20,12 +20,12 @@ export default function PayPalArchitectureSection() {
     {
       num: "2",
       title: "Server Generates Order",
-      desc: "Next.js backend calls PayPal Orders API (/v2/checkout/orders) with currency & milestone ID.",
+      desc: "Next.js backend calls Payments API (/v2/checkout/orders) with currency & milestone ID.",
     },
     {
       num: "3",
-      title: "PayPal Checkout Modal",
-      desc: "Client authenticates with PayPal Sandbox buyer account and authorizes transaction.",
+      title: "Secure Checkout Modal",
+      desc: "Client authenticates with Secure Payments buyer account and authorizes transaction.",
     },
     {
       num: "4",
@@ -35,24 +35,24 @@ export default function PayPalArchitectureSection() {
     {
       num: "5",
       title: "Milestone Paid & Stamped",
-      desc: "Database updates milestone to PAID and records permanent PayPal capture ID.",
+      desc: "Database updates milestone to PAID and records permanent payment capture ID.",
     },
   ];
 
   return (
-    <section id="paypal-workflow" className="relative py-24 px-4 sm:px-6 lg:px-8 border-t border-slate-800/80 bg-[#080B12]">
+    <section id="payment-workflow" className="relative py-24 px-4 sm:px-6 lg:px-8 border-t border-slate-800/80 bg-[#080B12]">
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold bg-[#0070BA]/10 text-[#38BDF8] border border-[#0070BA]/30">
             <CreditCard className="h-3.5 w-3.5" />
-            Official PayPal Developer Platform
+            Secure Payments Platform
           </div>
           <h2 className="mt-3 text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
-            Engineered on PayPal Sandbox & Orders v2
+            Engineered on a Secure Payments API
           </h2>
           <p className="mt-4 text-base sm:text-lg text-slate-400 leading-relaxed">
-            PayPal is not a mock button or an afterthought in MilestoneOS. Our architecture implements an end-to-end verified server-side payment lifecycle.
+            Secure checkout is not a mock button or an afterthought in MilestoneOS. Our architecture implements an end-to-end verified server-side payment lifecycle.
           </p>
         </div>
 
@@ -96,7 +96,7 @@ export default function PayPalArchitectureSection() {
                   Server-Side Secret Isolation
                 </h3>
                 <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                  PayPal Client Secret and Gemini API keys are never bundled in frontend JavaScript. All token handshakes and capture calls occur securely in isolated Next.js Server Components and Route Handlers.
+                  Payment client secrets and Gemini API keys are never bundled in frontend JavaScript. All token handshakes and capture calls occur securely in isolated Next.js Server Components and Route Handlers.
                 </p>
               </div>
               <div className="mt-4 text-[11px] font-mono text-emerald-400 flex items-center gap-1.5">
@@ -115,7 +115,7 @@ export default function PayPalArchitectureSection() {
                   Escrow & Multiparty Payouts
                 </h3>
                 <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                  Standard PayPal Checkout processes merchant-to-buyer transactions. In MilestoneOS, we model milestone-based holding and document how production scaling utilizes PayPal Multiparty or Payouts API.
+                  Standard Secure Checkout processes merchant-to-buyer transactions. In MilestoneOS, we model milestone-based holding and document how production scaling utilizes multiparty payments or a payouts API.
                 </p>
               </div>
               <div className="mt-4 text-[11px] font-mono text-slate-400 flex items-center gap-1.5">
@@ -133,11 +133,11 @@ export default function PayPalArchitectureSection() {
                   Negative Scenario Testing
                 </h3>
                 <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                  Supports simulated card declines, insufficient funds, expired authorization windows, and network timeout retries using PayPal Sandbox negative testing headers.
+                  Supports simulated card declines, insufficient funds, expired authorization windows, and network timeout retries using Secure Payments negative testing headers.
                 </p>
               </div>
               <div className="mt-4 text-[11px] font-mono text-sky-400 flex items-center gap-1.5">
-                <span>PayPal-Mock-Response: 200 / 422</span>
+                <span>Gateway-Mock-Response: 200 / 422</span>
               </div>
             </div>
           </div>

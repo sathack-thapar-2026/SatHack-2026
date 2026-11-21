@@ -32,7 +32,7 @@ interface InvoiceData {
   paymentDate: string;
   dueDate: string;
   status: "PAID" | "PENDING";
-  paypalTransactionId: string;
+  transactionId: string;
   paymentMethod: string;
   client: {
     name: string;
@@ -410,7 +410,7 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
     <div class="bottom-grid">
       <div class="settlement-info">
         <div><span class="settlement-label">Payment Method:</span> <span class="settlement-val">${invoice.paymentMethod}</span></div>
-        <div><span class="settlement-label">Transaction ID:</span> <span class="mono settlement-val">${invoice.paypalTransactionId}</span></div>
+        <div><span class="settlement-label">Transaction ID:</span> <span class="mono settlement-val">${invoice.transactionId}</span></div>
         <div><span class="settlement-label">Escrow Settlement:</span> <span class="settlement-val">Direct Mutual Release via Secure Escrow</span></div>
         <div><span class="settlement-label">Ledger Verification Hash:</span> <span class="mono" style="font-size: 10px;">${invoice.cryptographicHash}</span></div>
       </div>
@@ -478,7 +478,7 @@ export default function InvoiceModal({
             milestoneId: milestone?.id,
             transactionId:
               transactionId ||
-              milestone?.paypalTransactionId ||
+              milestone?.transactionId ||
               `PAYID-SBX-${Math.random().toString(36).substring(2, 8).toUpperCase()}-Q`,
             customPayload: {
               projectId: project?.id,
@@ -514,7 +514,7 @@ export default function InvoiceModal({
               payment: {
                 transactionId:
                   transactionId ||
-                  milestone?.paypalTransactionId ||
+                  milestone?.transactionId ||
                   "PAYID-SBX-973908-Q",
                 paidAt: milestone?.paidAt || "Nov 02, 2026 • 04:30 PM",
                 amount: milestone?.amount,
@@ -552,7 +552,7 @@ export default function InvoiceModal({
       if (!isCancelled && project && milestone) {
         const tx =
           transactionId ||
-          milestone.paypalTransactionId ||
+          milestone.transactionId ||
           "PAYID-SBX-973908-Q";
 
         const criteria = milestone.acceptanceCriteria || [];
@@ -589,7 +589,7 @@ export default function InvoiceModal({
           paymentDate: milestone.paidAt || "Nov 02, 2026 • 04:30 PM",
           dueDate: milestone.dueDate || "Completed",
           status: "PAID",
-          paypalTransactionId: tx,
+          transactionId: tx,
           paymentMethod: "Verified Escrow Settlement",
           client: {
             name: project.client.name,
@@ -675,7 +675,7 @@ export default function InvoiceModal({
     const summary = `Official Invoice
 Invoice Number: ${invoice.invoiceNumber}
 Status: ${invoice.status} via Escrow
-Transaction ID: ${invoice.paypalTransactionId}
+Transaction ID: ${invoice.transactionId}
 Payment Date: ${invoice.paymentDate}
 
 Project: ${invoice.projectTitle}
@@ -925,10 +925,10 @@ Settled securely via MilestoneOS Mutual Escrow.`;
                       <span className="text-slate-500 font-medium">Transaction ID:</span>
                       <button
                         type="button"
-                        onClick={() => handleCopyTxId(invoice.paypalTransactionId)}
+                        onClick={() => handleCopyTxId(invoice.transactionId)}
                         className="font-mono font-bold text-slate-900 hover:underline flex items-center gap-1 cursor-pointer"
                       >
-                        <span>{invoice.paypalTransactionId}</span>
+                        <span>{invoice.transactionId}</span>
                         {copiedId ? (
                           <Check className="h-3 w-3 text-emerald-600" />
                         ) : (

@@ -15,7 +15,7 @@ export default function HomePage() {
       {/* Interactive WebThreads background with live visualizer control panel */}
       <WebThreadsController />
 
-      {/* AMBIENT FLANK LIGHTING: Softly frames the left and right margins with rich PayPal blue ambiance */}
+      {/* AMBIENT FLANK LIGHTING: Softly frames the left and right margins with rich brand blue ambiance */}
       <div className="fixed inset-y-0 left-0 w-72 sm:w-96 bg-gradient-to-r from-blue-200/25 via-sky-100/15 to-transparent pointer-events-none z-0 dark:from-blue-900/15 dark:via-sky-950/5 dark:to-transparent" />
       <div className="fixed inset-y-0 right-0 w-72 sm:w-96 bg-gradient-to-l from-sky-200/25 via-blue-100/10 to-transparent pointer-events-none z-0 dark:from-sky-900/15 dark:via-blue-950/5 dark:to-transparent" />
       <div className="fixed top-0 inset-x-0 h-40 bg-gradient-to-b from-sky-100/30 via-blue-50/10 to-transparent pointer-events-none z-0 dark:from-sky-950/20 dark:to-transparent" />
@@ -25,7 +25,7 @@ export default function HomePage() {
       <main className="relative z-10 flex-1">
         {/* HERO SECTION */}
         <section className="relative pt-12 pb-16 sm:pt-20 sm:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden">
-          {/* Broad, gentle ambient radiance with PayPal blue aura covering widescreen displays */}
+          {/* Broad, gentle ambient radiance with brand blue aura covering widescreen displays */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] max-w-full h-[550px] bg-gradient-to-tr from-blue-300/35 via-sky-200/35 to-indigo-100/25 dark:from-blue-600/20 dark:via-sky-500/20 dark:to-indigo-500/10 blur-[100px] pointer-events-none -z-10" />
 
           <div className="mx-auto max-w-5xl text-center">

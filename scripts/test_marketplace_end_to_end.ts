@@ -86,7 +86,7 @@ async function runAllTests() {
     body: JSON.stringify({
       id: testAId,
       title: "Decentralized Escrow Smart Contracts",
-      description: "Automated escrow platform with PayPal release.",
+      description: "Automated escrow platform securely release.",
       category: "Full-Stack Development",
       targetDeadline: "Dec 31, 2026",
       initiatedBy: "freelancer",
@@ -377,7 +377,7 @@ async function runAllTests() {
   // SCENARIO G: Security — Freelancer Cannot Initiate Payment
   // --------------------------------------------------------------------------
   console.log("\n▶ SCENARIO G: Security — Only Client Can Initiate Payment");
-  const payRes = await fetch(`${APP_URL}/api/paypal/create-order`, {
+  const payRes = await fetch(`${APP_URL}/api/payments/create-order`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -388,11 +388,11 @@ async function runAllTests() {
   });
   assert(
     payRes.status === 403,
-    `17. Server blocks non-client from creating PayPal payment order (status: ${payRes.status})`
+    `17. Server blocks non-client from creating payment order (status: ${payRes.status})`
   );
 
   // --------------------------------------------------------------------------
-  // SCENARIO H: Genuine $2,400 Completed PayPal Capture Preservation
+  // SCENARIO H: Genuine $2,400 Completed Payment Capture Preservation
   // --------------------------------------------------------------------------
   console.log("\n▶ SCENARIO H: Integrity Check — Preserve Genuine $2,400 Capture");
   const { data: genTx, error: genErr } = await supabase
@@ -403,7 +403,7 @@ async function runAllTests() {
 
   assert(
     genTx && genTx.amount === 2400 && genTx.paypal_transaction_id === "90U44122NS995343N",
-    "18. Genuine $2,400 PayPal capture (ID: 90U44122NS995343N) is preserved and intact",
+    "18. Genuine $2,400 payment capture (ID: 90U44122NS995343N) is preserved and intact",
     genTx
   );
 

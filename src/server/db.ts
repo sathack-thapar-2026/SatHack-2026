@@ -18,7 +18,7 @@ import {
   extractBaseCode,
   isProjectAccepted,
 } from "@/lib/dashboard-data";
-import { CaptureOrderResult } from "./paypal";
+import { CaptureOrderResult } from "./payments";
 import { getServerSupabase } from "./supabase";
 
 export interface ProjectFilter {
@@ -168,7 +168,7 @@ function rowToTransaction(row: any): TransactionRecord {
             minute: "2-digit",
           })
         : "Today"),
-    paypalTransactionId: row.paypal_transaction_id || base.paypalTransactionId,
+    transactionId: row.paypal_transaction_id || base.transactionId,
     isSimulated: Boolean(row.is_simulated ?? base.isSimulated),
     isDemo: Boolean(row.is_demo ?? base.isDemo),
   };
@@ -786,7 +786,7 @@ export const db = {
 
     milestone.status = "paid";
     milestone.paidAt = capture.timestamp || new Date().toISOString();
-    milestone.paypalTransactionId = capture.captureId;
+    milestone.transactionId = capture.captureId;
 
     // Update project totals
     project.totalPaid = (project.totalPaid || 0) + milestone.amount;
@@ -817,7 +817,7 @@ export const db = {
         hour: "2-digit",
         minute: "2-digit",
       }),
-      paypalTransactionId: capture.captureId,
+      transactionId: capture.captureId,
       isSimulated: capture.isSimulated ?? false,
       isDemo: Boolean(project.isDemo),
     };
@@ -826,7 +826,7 @@ export const db = {
     const currSym = curr.toUpperCase() === "INR" ? "₹" : "$";
     const activity: ActivityItem = {
       id: `act_${Date.now()}`,
-      action: `Released payment (${currSym}${milestone.amount.toLocaleString()} ${curr}) for Stage 0${milestone.stageNumber}: ${milestone.title} via PayPal Capture ${capture.captureId}`,
+      action: `Released payment (${currSym}${milestone.amount.toLocaleString()} ${curr}) for Stage 0${milestone.stageNumber}: ${milestone.title} via Payment Capture ${capture.captureId}`,
       actor: project.client.name,
       actorRole: "client",
       timestamp: "Just now",

@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { PayPalIcon } from "./icons";
+import { PaymentIcon } from "./icons";
 
 interface CompletedProjectModalProps {
   project: ProjectContract | null;
@@ -229,7 +229,7 @@ export default function CompletedProjectModal({
                           {m.paidAt || m.dueDate}
                         </td>
                         <td className="p-3 font-mono text-[11px] font-medium text-[#0070BA] dark:text-sky-400 whitespace-nowrap">
-                          {m.paypalTransactionId || "PAYID-SBX-COMPLETED"}
+                          {m.transactionId || "PAYID-SBX-COMPLETED"}
                         </td>
                         <td className="p-3 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-2">
@@ -240,7 +240,7 @@ export default function CompletedProjectModal({
                             {onOpenInvoice && (
                               <button
                                 type="button"
-                                onClick={() => onOpenInvoice(project, m, m.paypalTransactionId)}
+                                onClick={() => onOpenInvoice(project, m, m.transactionId)}
                                 className="text-xs text-[#0070BA] dark:text-sky-400 font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
                               >
                                 <Receipt className="h-3 w-3" />

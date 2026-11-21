@@ -19,7 +19,7 @@ import ProjectRequestsView from "@/components/dashboard/ProjectRequestsView";
 import AuditModal from "@/components/dashboard/AuditModal";
 import SubmissionModal from "@/components/dashboard/SubmissionModal";
 import RevisionRequestModal from "@/components/dashboard/RevisionRequestModal";
-import PayPalPaymentModal from "@/components/dashboard/PayPalPaymentModal";
+import PaymentModal from "@/components/dashboard/PaymentModal";
 import NewProjectModal from "@/components/dashboard/NewProjectModal";
 import EditProjectModal from "@/components/dashboard/EditProjectModal";
 import ProposalReviewModal from "@/components/dashboard/ProposalReviewModal";
@@ -83,7 +83,7 @@ function DashboardInner() {
     milestone: Milestone;
   } | null>(null);
 
-  const [payPalTarget, setPayPalTarget] = useState<{
+  const [paymentTarget, setPaymentTarget] = useState<{
     project: ProjectContract;
     milestone: Milestone;
   } | null>(null);
@@ -196,7 +196,7 @@ function DashboardInner() {
             <DashboardOverview
               onOpenAudit={(p, m) => setAuditTarget({ project: p, milestone: m })}
               onOpenSubmission={(p, m) => setSubmissionTarget({ project: p, milestone: m })}
-              onOpenPayPal={(p, m) => setPayPalTarget({ project: p, milestone: m })}
+              onOpenPayment={(p, m) => setPaymentTarget({ project: p, milestone: m })}
               onOpenInvoice={(p, m, tx) => setInvoiceTarget({ project: p, milestone: m, transactionId: tx })}
               onOpenNewProject={() => {
                 setEditingRevisionProject(null);
@@ -247,7 +247,7 @@ function DashboardInner() {
                   onOpenAudit={(p, m) => setAuditTarget({ project: p, milestone: m })}
                   onOpenSubmission={(p, m) => setSubmissionTarget({ project: p, milestone: m })}
                   onOpenRevision={(p, m) => setRevisionTarget({ project: p, milestone: m })}
-                  onOpenPayPal={(p, m) => setPayPalTarget({ project: p, milestone: m })}
+                  onOpenPayment={(p, m) => setPaymentTarget({ project: p, milestone: m })}
                   onOpenInvoice={(p, m, tx) => setInvoiceTarget({ project: p, milestone: m, transactionId: tx })}
                   onOpenEditProject={() => setIsEditProjectModalOpen(true)}
                   onOpenAddMilestone={() => setIsAddMilestoneOpen(true)}
@@ -275,7 +275,7 @@ function DashboardInner() {
             <MilestonesView
               onOpenAudit={(p, m) => setAuditTarget({ project: p, milestone: m })}
               onOpenSubmission={(p, m) => setSubmissionTarget({ project: p, milestone: m })}
-              onOpenPayPal={(p, m) => setPayPalTarget({ project: p, milestone: m })}
+              onOpenPayment={(p, m) => setPaymentTarget({ project: p, milestone: m })}
               onOpenRevision={(p, m) => setRevisionTarget({ project: p, milestone: m })}
               onOpenInvoice={(p, m, tx) => setInvoiceTarget({ project: p, milestone: m, transactionId: tx })}
               onSelectProject={(projectId) => {
@@ -301,7 +301,7 @@ function DashboardInner() {
           {/* TAB 5: Payments */}
           {activeTab === "payments" && (
             <PaymentsView
-              onOpenPayPal={(p, m) => setPayPalTarget({ project: p, milestone: m })}
+              onOpenPayment={(p, m) => setPaymentTarget({ project: p, milestone: m })}
               onOpenInvoice={(p, m, tx) => setInvoiceTarget({ project: p, milestone: m, transactionId: tx })}
             />
           )}
@@ -344,10 +344,10 @@ function DashboardInner() {
             setAuditTarget(null);
             setRevisionTarget(t);
           }}
-          onOpenPayPalModal={() => {
+          onOpenPaymentModal={() => {
             const t = auditTarget;
             setAuditTarget(null);
-            setPayPalTarget(t);
+            setPaymentTarget(t);
           }}
           onOpenSubmissionModal={() => {
             const t = auditTarget;
@@ -377,13 +377,13 @@ function DashboardInner() {
         />
       )}
 
-      {/* PAYPAL PAYMENT MODAL */}
-      {payPalTarget && (
-        <PayPalPaymentModal
-          project={payPalTarget.project}
-          milestone={payPalTarget.milestone}
+      {/* PAYMENT MODAL */}
+      {paymentTarget && (
+        <PaymentModal
+          project={paymentTarget.project}
+          milestone={paymentTarget.milestone}
           isOpen={true}
-          onClose={() => setPayPalTarget(null)}
+          onClose={() => setPaymentTarget(null)}
           onOpenInvoice={(p, m, tx) => setInvoiceTarget({ project: p, milestone: m, transactionId: tx })}
         />
       )}

@@ -1,23 +1,23 @@
 /**
- * MilestoneOS — PayPal Server Client
+ * MilestoneOS — Payment Gateway Server Client
  * Official Orders v2 REST API integration for server-side order creation and capture.
  */
 
-interface PayPalTokenCache {
+interface GatewayTokenCache {
   accessToken: string;
   expiresAt: number;
 }
 
-let tokenCache: PayPalTokenCache | null = null;
+let tokenCache: GatewayTokenCache | null = null;
 
-export function getPayPalBaseUrl(): string {
+export function getGatewayBaseUrl(): string {
   const env = process.env.PAYPAL_ENVIRONMENT || "sandbox";
   return env === "production"
     ? "https://api-m.paypal.com"
     : "https://api-m.sandbox.paypal.com";
 }
 
-export function hasPayPalCredentials(): boolean {
+export function hasPaymentCredentials(): boolean {
   const clientId = process.env.PAYPAL_CLIENT_ID;
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
   return Boolean(
@@ -29,9 +29,9 @@ export function hasPayPalCredentials(): boolean {
 }
 
 /**
- * Retrieves or refreshes OAuth2 Bearer Access Token from PayPal
+ * Retrieves or refreshes OAuth2 Bearer Access Token from the payment gateway
  */
-export async function getPayPalAccessToken(): Promise<string> {
+export async function getGatewayAccessToken(): Promise<string> {
   const now = Date.now();
   if (tokenCache && tokenCache.expiresAt > now + 60_000) {
     return tokenCache.accessToken;
@@ -40,13 +40,13 @@ export async function getPayPalAccessToken(): Promise<string> {
   const clientId = process.env.PAYPAL_CLIENT_ID;
   const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
 
-  if (!hasPayPalCredentials()) {
+  if (!hasPaymentCredentials()) {
     throw new Error(
-      "PayPal API credentials missing. Please define PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET in .env.local."
+      "Payment gateway credentials missing. Please define the client ID and client secret in .env.local."
     );
   }
 
-  const baseUrl = getPayPalBaseUrl();
+  const baseUrl = getGatewayBaseUrl();
   const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
   const response = await fetch(`${baseUrl}/v1/oauth2/token`, {
@@ -60,7 +60,7 @@ export async function getPayPalAccessToken(): Promise<string> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`PayPal token request failed (${response.status}): ${errorText}`);
+    throw new Error(`Payment gateway token request failed (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();
@@ -81,7 +81,7 @@ export interface CreateOrderParams {
   freelancerName?: string;
 }
 
-export interface PayPalOrderResult {
+export interface PaymentOrderResult {
   orderId: string;
   status: "CREATED" | "SAVED" | "APPROVED" | "VOIDED" | "COMPLETED" | "PAYER_ACTION_REQUIRED";
   approvalUrl?: string;
@@ -89,21 +89,21 @@ export interface PayPalOrderResult {
 }
 
 /**
- * Creates an authorized PayPal Order for a milestone payment
+ * Creates an authorized Payment Order for a milestone payment
  */
-export async function createPayPalOrder(params: CreateOrderParams): Promise<PayPalOrderResult> {
+export async function createPaymentOrder(params: CreateOrderParams): Promise<PaymentOrderResult> {
   const { projectId, milestoneId, milestoneTitle, amount, currency = "USD" } = params;
 
-  if (!hasPayPalCredentials()) {
+  if (!hasPaymentCredentials()) {
     throw new Error(
-      "PayPal API credentials missing. Please configure PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET in .env.local."
+      "Payment gateway credentials missing. Please configure the client ID and client secret in .env.local."
     );
   }
 
-  const token = await getPayPalAccessToken();
-  const baseUrl = getPayPalBaseUrl();
+  const token = await getGatewayAccessToken();
+  const baseUrl = getGatewayBaseUrl();
 
-  // Ensure ASCII-only string values for PayPal Hosted Checkout UI compatibility
+  // Ensure ASCII-only string values for hosted checkout UI compatibility
   const cleanTitle = (milestoneTitle || "Milestone Payment")
     .replace(/[^\x20-\x7E]/g, "")
     .trim()
@@ -153,12 +153,12 @@ export async function createPayPalOrder(params: CreateOrderParams): Promise<PayP
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to create PayPal order (${response.status}): ${errorText}`);
+    throw new Error(`Failed to create payment order (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();
   console.log(
-    `[PayPal Orders v2] Created order ${data.id} (${data.status}) for ${amount.toFixed(2)} ${currency} - ref: ${milestoneId}`
+    `[Payments API] Created order ${data.id} (${data.status}) for ${amount.toFixed(2)} ${currency} - ref: ${milestoneId}`
   );
   const approveLink = data.links?.find((l: { rel: string; href: string }) => l.rel === "approve");
 
@@ -186,17 +186,17 @@ export interface CaptureOrderResult {
 }
 
 /**
- * Captures funds from an approved PayPal Order
+ * Captures funds from an approved Payment Order
  */
-export async function capturePayPalOrder(orderId: string): Promise<CaptureOrderResult> {
-  if (!hasPayPalCredentials()) {
+export async function capturePaymentOrder(orderId: string): Promise<CaptureOrderResult> {
+  if (!hasPaymentCredentials()) {
     throw new Error(
-      "PayPal API credentials missing. Please configure PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET in .env.local."
+      "Payment gateway credentials missing. Please configure the client ID and client secret in .env.local."
     );
   }
 
-  const token = await getPayPalAccessToken();
-  const baseUrl = getPayPalBaseUrl();
+  const token = await getGatewayAccessToken();
+  const baseUrl = getGatewayBaseUrl();
 
   const response = await fetch(`${baseUrl}/v2/checkout/orders/${orderId}/capture`, {
     method: "POST",
@@ -210,7 +210,7 @@ export async function capturePayPalOrder(orderId: string): Promise<CaptureOrderR
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to capture PayPal order (${response.status}): ${errorText}`);
+    throw new Error(`Failed to capture payment order (${response.status}): ${errorText}`);
   }
 
   const data = await response.json();

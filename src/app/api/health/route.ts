@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hasPayPalCredentials } from "@/server/paypal";
+import { hasPaymentCredentials } from "@/server/payments";
 import { hasGeminiKey } from "@/server/gemini";
 import { db } from "@/server/db";
 
@@ -11,8 +11,8 @@ export async function GET() {
     status: "healthy",
     timestamp: new Date().toISOString(),
     services: {
-      paypal: {
-        configured: hasPayPalCredentials(),
+      payments: {
+        configured: hasPaymentCredentials(),
         environment: process.env.PAYPAL_ENVIRONMENT || "sandbox",
       },
       geminiAI: {

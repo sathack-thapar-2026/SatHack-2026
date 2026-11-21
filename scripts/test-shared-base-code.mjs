@@ -216,9 +216,9 @@ async function runTests() {
   console.log(`✓ Scenario 7 PASSED: User A operates simultaneously as Client and Freelancer with perfect workspace separation!`);
 
   // -------------------------------------------------------------
-  // Scenario 8: Verify PayPal & Existing Integrity
+  // Scenario 8: Verify Payments & Existing Integrity
   // -------------------------------------------------------------
-  console.log("\n[Scenario 8] Verifying health, PayPal sandbox & AI readiness...");
+  console.log("\n[Scenario 8] Verifying health, payments sandbox & AI readiness...");
   const healthRes = await fetch(`${BASE_URL}/api/health`);
   const healthData = await healthRes.json();
   if (!healthRes.ok || healthData.status !== "healthy") {

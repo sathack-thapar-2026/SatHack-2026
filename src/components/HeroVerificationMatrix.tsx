@@ -39,29 +39,29 @@ interface Scenario {
 
 const SCENARIOS: Record<ScenarioKey, Scenario> = {
   pass: {
-    title: "Milestone 2: Frontend & PayPal Sandbox Integration",
+    title: "Milestone 2: Frontend & Payment Gateway Integration",
     badge: "92% AI Verified • Ready for Approval",
     badgeColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
     overallScore: 92,
     gitCommit: "commit a9f4e2d",
-    branch: "feat/paypal-orders-api",
+    branch: "feat/payment-orders-api",
     deliverablesCount: 4,
     aiSummary:
       "All primary acceptance criteria have been verified against the Next.js frontend code and sandbox route handlers. Unit test suites for checkout routing passed with 94% coverage.",
     criteria: [
       {
         id: "c1",
-        label: "Next.js App Router PayPal Orders API Route (/api/paypal/create-order)",
+        label: "Next.js App Router Payments API Route (/api/payments/create-order)",
         status: "satisfied",
         confidence: 99,
         explanation: "Server route exists, securely uses server credentials, and handles sandbox intent correctly.",
       },
       {
         id: "c2",
-        label: "Client-side PayPal Buttons component with dynamic amount prop (₹15,000)",
+        label: "Client-side Payment Buttons component with dynamic amount prop (₹15,000)",
         status: "satisfied",
         confidence: 96,
-        explanation: "Component renders standard PayPal container with currency validation in place.",
+        explanation: "Component renders standard payment container with currency validation in place.",
       },
       {
         id: "c3",
@@ -82,7 +82,7 @@ const SCENARIOS: Record<ScenarioKey, Scenario> = {
     recommendation: "Deliverable satisfies agreed scope. Safe for client release.",
   },
   partial: {
-    title: "Milestone 2: Frontend & PayPal Sandbox Integration",
+    title: "Milestone 2: Frontend & Payment Gateway Integration",
     badge: "68% AI Verified • Missing Deliverables",
     badgeColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
     overallScore: 68,
@@ -90,18 +90,18 @@ const SCENARIOS: Record<ScenarioKey, Scenario> = {
     branch: "wip/checkout-ui-draft",
     deliverablesCount: 2,
     aiSummary:
-      "Frontend UI layout is complete, but backend capture route and PayPal webhook listeners were not located in the repository PR.",
+      "Frontend UI layout is complete, but backend capture route and payment webhook listeners were not located in the repository PR.",
     criteria: [
       {
         id: "c1",
-        label: "Client-side PayPal Buttons component styling & responsive design",
+        label: "Client-side Payment Buttons component styling & responsive design",
         status: "satisfied",
         confidence: 95,
         explanation: "Visual styling matches agreed Figma specifications on mobile and desktop.",
       },
       {
         id: "c2",
-        label: "Server-side Order Capture route (/api/paypal/capture-order)",
+        label: "Server-side Order Capture route (/api/payments/capture-order)",
         status: "missing",
         confidence: 98,
         explanation: "Endpoint missing. Client-side button currently calls a mock timeout without sandbox capture.",
@@ -125,7 +125,7 @@ const SCENARIOS: Record<ScenarioKey, Scenario> = {
     recommendation: "Hold milestone approval. Request freelancer to implement missing capture route.",
   },
   revision: {
-    title: "Milestone 2: Frontend & PayPal Sandbox Integration",
+    title: "Milestone 2: Frontend & Payment Gateway Integration",
     badge: "41% AI Verified • Major Revisions Required",
     badgeColor: "text-rose-400 bg-rose-500/10 border-rose-500/20",
     overallScore: 41,
@@ -133,11 +133,11 @@ const SCENARIOS: Record<ScenarioKey, Scenario> = {
     branch: "feat/partial-mockups",
     deliverablesCount: 1,
     aiSummary:
-      "Submitted deliverable contains static UI mockups only. Core functional requirements (PayPal SDK integration, server routes, acceptance criteria) are not yet implemented.",
+      "Submitted deliverable contains static UI mockups only. Core functional requirements (payment SDK integration, server routes, acceptance criteria) are not yet implemented.",
     criteria: [
       {
         id: "c1",
-        label: "PayPal SDK integration and client-side button triggers",
+        label: "payment SDK integration and client-side button triggers",
         status: "missing",
         confidence: 99,
         explanation: "Only a static image placeholder button found. No official SDK loaded.",
@@ -277,11 +277,11 @@ export default function HeroVerificationMatrix() {
               <ul className="mt-1.5 space-y-1.5 text-xs text-slate-300">
                 <li className="flex items-center gap-1.5 truncate">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span>/app/api/paypal/create-order/route.ts</span>
+                  <span>/app/api/payments/create-order/route.ts</span>
                 </li>
                 <li className="flex items-center gap-1.5 truncate">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span>/components/PayPalCheckoutModal.tsx</span>
+                  <span>/components/PaymentCheckoutModal.tsx</span>
                 </li>
                 <li className="flex items-center gap-1.5 truncate">
                   <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />
@@ -374,16 +374,16 @@ export default function HeroVerificationMatrix() {
             </div>
           </div>
 
-          {/* Action Footer: Decision & PayPal Checkout Trigger */}
+          {/* Action Footer: Decision & Secure Checkout Trigger */}
           <div className="pt-3 border-t border-slate-800/80">
             {paidSuccess ? (
               <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3.5 text-center">
                 <div className="flex items-center justify-center gap-2 text-emerald-300 font-bold text-sm">
                   <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                  <span>Payment Captured via PayPal Sandbox!</span>
+                  <span>Payment Captured via Secure Payments!</span>
                 </div>
                 <p className="mt-1 text-xs text-slate-300 font-mono">
-                  TxID: PAYPAL-SBX-ORD-99412 • ₹15,000 transferred to Freelancer Wallet
+                  TxID: PAY-SBX-ORD-99412 • ₹15,000 transferred to Freelancer Wallet
                 </p>
                 <div className="mt-2.5 flex items-center justify-center gap-3">
                   <span className="text-[11px] text-slate-400">Milestone 2 status:</span>
@@ -434,12 +434,12 @@ export default function HeroVerificationMatrix() {
                         {isSimulatingPayment ? (
                           <>
                             <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                            <span>Contacting PayPal Sandbox...</span>
+                            <span>Contacting Secure Payments...</span>
                           </>
                         ) : (
                           <>
                             <Wallet className="h-3.5 w-3.5 text-sky-200" />
-                            <span>Approve & Release ₹15,000 via PayPal</span>
+                            <span>Approve & Release ₹15,000 via secure payments</span>
                           </>
                         )}
                       </button>

@@ -3,15 +3,15 @@
 import { useDashboard } from "@/lib/dashboard-store";
 import { Milestone, ProjectContract, TransactionRecord, isProjectAccepted, formatCurrency } from "@/lib/dashboard-data";
 import { CheckCircle2, Clock, Copy, Check, X, FolderGit2, Sparkles, Download, Receipt } from "lucide-react";
-import { PayPalIcon } from "./icons";
+import { PaymentIcon } from "./icons";
 import { useState } from "react";
 
 interface PaymentsViewProps {
-  onOpenPayPal: (project: ProjectContract, milestone: Milestone) => void;
+  onOpenPayment: (project: ProjectContract, milestone: Milestone) => void;
   onOpenInvoice?: (project: ProjectContract, milestone: Milestone, transactionId?: string) => void;
 }
 
-export default function PaymentsView({ onOpenPayPal, onOpenInvoice }: PaymentsViewProps) {
+export default function PaymentsView({ onOpenPayment, onOpenInvoice }: PaymentsViewProps) {
   const { projects, transactions, role } = useDashboard();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedTx, setSelectedTx] = useState<TransactionRecord | null>(null);
@@ -48,10 +48,10 @@ export default function PaymentsView({ onOpenPayPal, onOpenInvoice }: PaymentsVi
         status: "paid" as const,
         acceptanceCriteria: [],
         submissions: [],
-        paypalTransactionId: tx.paypalTransactionId,
+        transactionId: tx.transactionId,
       };
 
-    onOpenInvoice(project, milestone, tx.paypalTransactionId);
+    onOpenInvoice(project, milestone, tx.transactionId);
   };
 
   return (
@@ -114,10 +114,10 @@ export default function PaymentsView({ onOpenPayPal, onOpenInvoice }: PaymentsVi
                   {role === "client" ? (
                     <button
                       type="button"
-                      onClick={() => onOpenPayPal(project, milestone)}
+                      onClick={() => onOpenPayment(project, milestone)}
                       className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 cursor-pointer flex items-center gap-1.5 transition-colors shadow-xs"
                     >
-                      <PayPalIcon className="h-3.5 w-3.5" />
+                      <PaymentIcon className="h-3.5 w-3.5" />
                       <span>Pay Now</span>
                     </button>
                   ) : (
@@ -171,7 +171,7 @@ export default function PaymentsView({ onOpenPayPal, onOpenInvoice }: PaymentsVi
                     className="hover:bg-slate-50/70 dark:hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     <td className="p-3.5 font-mono font-medium text-[#0070BA] dark:text-sky-300">
-                      {tx.paypalTransactionId}
+                      {tx.transactionId}
                     </td>
                     <td className="p-3.5 text-slate-500">{tx.paidAt}</td>
                     <td className="p-3.5">
@@ -234,7 +234,7 @@ export default function PaymentsView({ onOpenPayPal, onOpenInvoice }: PaymentsVi
               <div className="flex items-center justify-between">
                 <span className="text-slate-400">Transaction ID:</span>
                 <span className="font-mono font-bold text-slate-900 dark:text-white">
-                  {selectedTx.paypalTransactionId}
+                  {selectedTx.transactionId}
                 </span>
               </div>
               <div className="flex items-center justify-between">

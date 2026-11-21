@@ -26,12 +26,12 @@ import {
   Layers,
   DollarSign,
 } from "lucide-react";
-import { PayPalIcon } from "./icons";
+import { PaymentIcon } from "./icons";
 
 interface DashboardOverviewProps {
   onOpenAudit: (project: ProjectContract, milestone: Milestone) => void;
   onOpenSubmission: (project: ProjectContract, milestone: Milestone) => void;
-  onOpenPayPal: (project: ProjectContract, milestone: Milestone) => void;
+  onOpenPayment: (project: ProjectContract, milestone: Milestone) => void;
   onOpenInvoice?: (project: ProjectContract, milestone: Milestone, transactionId?: string) => void;
   onOpenNewProject: () => void;
   onSelectProject?: (projectId: string) => void;
@@ -47,7 +47,7 @@ interface EnrichedActivity extends ActivityItem {
 
 function getActivityMeta(act: EnrichedActivity) {
   const isPayment =
-    act.actorRole === "paypal" ||
+    act.actorRole === "payment" ||
     act.action.toLowerCase().includes("payment") ||
     act.action.toLowerCase().includes("paid") ||
     act.action.toLowerCase().includes("receipt");
@@ -171,7 +171,7 @@ function extractMilestoneTitle(act: EnrichedActivity): string | null {
 export default function DashboardOverview({
   onOpenAudit,
   onOpenSubmission,
-  onOpenPayPal,
+  onOpenPayment,
   onOpenInvoice,
   onOpenNewProject,
   onSelectProject,
@@ -253,7 +253,7 @@ export default function DashboardOverview({
       actionsNeeded.push({
         type: "payment",
         title: `Payment ready: ${formatCurrency(milestone.amount, milestone.currency || project.currency)} for "${milestone.title}"`,
-        description: `Work was approved. Send payment to ${project.freelancer.name} via PayPal Sandbox.`,
+        description: `Work was approved. Send payment to ${project.freelancer.name} via Secure Payments.`,
         actionLabel: "Pay Now",
         project,
         milestone,
@@ -394,7 +394,7 @@ export default function DashboardOverview({
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               {role === "client"
-                ? "Create your first project to define custom milestone acceptance criteria, invite a freelancer, and fund escrow with PayPal Sandbox."
+                ? "Create your first project to define custom milestone acceptance criteria, invite a freelancer, and fund escrow with Secure Payments."
                 : "Accept a client invitation link or share your permanent MilestoneOS ID with a client to receive milestone proposals."}
             </p>
           </div>
@@ -736,7 +736,7 @@ export default function DashboardOverview({
             ${totalPaid.toLocaleString()}
           </div>
           <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            <span>Through PayPal Sandbox</span>
+            <span>Through Secure Payments</span>
             <span className="text-emerald-600 dark:text-emerald-400 font-semibold inline-flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
               Records <ArrowRight className="h-3 w-3" />
             </span>
@@ -805,7 +805,7 @@ export default function DashboardOverview({
                 </div>
               ) : isPayment ? (
                 <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 shrink-0 shadow-2xs">
-                  <PayPalIcon className="h-4 w-4" />
+                  <PaymentIcon className="h-4 w-4" />
                 </div>
               ) : (
                 <div className="p-2.5 rounded-xl bg-sky-100 text-[#0070BA] dark:bg-sky-950/50 dark:text-sky-400 shrink-0 shadow-2xs">
@@ -899,7 +899,7 @@ export default function DashboardOverview({
                             <strong className="text-[#0070BA] dark:text-sky-300 font-bold underline decoration-[#0070BA]/30 underline-offset-2">
                               {item.project.title}
                             </strong>
-                            . Send payment to <strong className="text-slate-800 dark:text-slate-200 font-semibold">{item.project.freelancer.name}</strong> via PayPal Sandbox.
+                            . Send payment to <strong className="text-slate-800 dark:text-slate-200 font-semibold">{item.project.freelancer.name}</strong> via Secure Payments.
                           </>
                         ) : item.milestone ? (
                           <>
@@ -928,10 +928,10 @@ export default function DashboardOverview({
                         </button>
                         <button
                           type="button"
-                          onClick={() => onOpenPayPal(item.project, item.milestone!)}
+                          onClick={() => onOpenPayment(item.project, item.milestone!)}
                           className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-500 cursor-pointer flex items-center gap-1.5 transition-colors shadow-xs"
                         >
-                          <PayPalIcon className="h-3.5 w-3.5" />
+                          <PaymentIcon className="h-3.5 w-3.5" />
                           <span>Pay Now</span>
                         </button>
                       </div>
@@ -967,7 +967,7 @@ export default function DashboardOverview({
               </span>
             </div>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              Live audit ledger of milestone submissions, AI reviews, client approvals, and PayPal settlements.
+              Live audit ledger of milestone submissions, AI reviews, client approvals, and payment settlements.
             </p>
           </div>
 
@@ -1105,7 +1105,7 @@ export default function DashboardOverview({
                   {/* Clean, Untidy-Free Expanded Details */}
                   {isExpanded && (
                     <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/5 ml-11 space-y-2.5 text-xs animate-in fade-in duration-150">
-                      {/* PayPal Receipt & Action Row */}
+                      {/* Payment Receipt & Action Row */}
                       {receiptCode && (
                         <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/5">
                           <div className="flex items-center gap-2">

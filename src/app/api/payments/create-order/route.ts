@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPayPalOrder } from "@/server/paypal";
+import { createPaymentOrder } from "@/server/payments";
 import { db } from "@/server/db";
 import { getServerSupabase } from "@/server/supabase";
 import { extractBaseCode } from "@/lib/dashboard-data";
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // PayPal REST Orders v2 API does not support INR directly for checkout.
+    // Payments API does not support INR directly for checkout.
     // Per platform requirements, do not silently convert or assume exchange rates.
     const normalizedCurrency = contractCurrency.trim().toUpperCase();
     if (
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "PayPal Checkout does not support INR (Indian Rupee) directly. Escrow milestone contracts must be settled in supported PayPal currencies (USD). Please adjust the milestone currency to USD.",
+            "Secure checkout does not support INR (Indian Rupee) directly. Escrow milestone contracts must be settled in supported payment currencies (USD). Please adjust the milestone currency to USD.",
           currency: contractCurrency,
           isUnsupportedCurrency: true,
         },
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const orderResult = await createPayPalOrder({
+    const orderResult = await createPaymentOrder({
       projectId: project.id,
       milestoneId: milestone.id,
       milestoneTitle: milestone.title,
@@ -128,9 +128,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    console.error("PayPal Create Order API Error:", err);
+    console.error("Create Order API Error:", err);
     return NextResponse.json(
-      { error: err.message || "Failed to create PayPal Sandbox order" },
+      { error: err.message || "Failed to create Secure Payments order" },
       { status: 500 }
     );
   }

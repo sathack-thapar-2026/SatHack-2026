@@ -127,7 +127,7 @@ export default function SimpleInteractiveDemo() {
                   )}
                 </div>
                 <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                  Working PayPal payment button so customers can pay online
+                  Working payment button so customers can pay online
                 </span>
               </div>
               <span
@@ -172,7 +172,7 @@ export default function SimpleInteractiveDemo() {
             <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5 text-center dark:bg-emerald-500/10 dark:border-emerald-500/30">
               <div className="flex items-center justify-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-base">
                 <CheckCircle2 className="h-5 w-5" />
-                <span>₹15,000 Sent Safely via PayPal!</span>
+                <span>₹15,000 Sent Safely via secure payments!</span>
               </div>
               <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
                 Payment completed. The freelancer has been notified and can now begin the next stage.
@@ -234,12 +234,12 @@ export default function SimpleInteractiveDemo() {
                   {isProcessing ? (
                     <>
                       <RefreshCw className="h-4 w-4 animate-spin" />
-                      <span>Sending via PayPal...</span>
+                      <span>Sending via secure payments...</span>
                     </>
                   ) : (
                     <>
                       <Wallet className="h-4 w-4" />
-                      <span>Approve & Pay ₹15,000 with PayPal</span>
+                      <span>Approve & Pay ₹15,000 securely</span>
                     </>
                   )}
                 </button>
