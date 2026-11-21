@@ -21,10 +21,10 @@ export default function PermileLogo({
   showTagline = false,
 }: PermileLogoProps) {
   const iconSizes = {
-    sm: "h-7 w-7",
-    md: "h-8 sm:h-9 w-8 sm:w-9",
-    lg: "h-10 sm:h-11 w-10 sm:w-11",
-    xl: "h-12 sm:h-14 w-12 sm:w-14",
+    sm: "h-6 sm:h-7",
+    md: "h-7 sm:h-8",
+    lg: "h-9 sm:h-10",
+    xl: "h-11 sm:h-12",
   };
 
   const textSizes = {
@@ -35,12 +35,17 @@ export default function PermileLogo({
   };
 
   const content = (
-    <div className={cn("inline-flex items-center gap-2.5 group select-none", className)}>
-      <div className={cn("relative shrink-0 transition-transform group-hover:scale-105 rounded-xl overflow-hidden shadow-xs", iconSizes[size])}>
+    <div className={cn("inline-flex items-center gap-2 sm:gap-2.5 group select-none", className)}>
+      <div
+        className={cn(
+          "relative shrink-0 transition-transform group-hover:scale-105 duration-200 flex items-center justify-center",
+          iconSizes[size]
+        )}
+      >
         <img
           src="/permile-icon.png"
           alt="PerMile"
-          className="size-full object-contain drop-shadow-sm rounded-xl"
+          className="h-full w-auto object-contain drop-shadow-[0_2px_8px_rgba(2,132,199,0.30)] dark:drop-shadow-[0_2px_12px_rgba(56,189,248,0.40)] select-none pointer-events-none"
         />
       </div>
 
@@ -69,7 +74,10 @@ export default function PermileLogo({
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#087FBE] rounded-lg">
+      <Link
+        href={href}
+        className="inline-flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#087FBE] rounded-lg"
+      >
         {content}
       </Link>
     );
