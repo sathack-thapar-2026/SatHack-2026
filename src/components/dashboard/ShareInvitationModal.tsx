@@ -44,13 +44,13 @@ export default function ShareInvitationModal({
   };
 
   const whatsappText = encodeURIComponent(
-    `Hi! I've created our project proposal for "${project.title}" (${formatCurrency(project.totalBudget, project.currency)}) on MilestoneOS. Please review the agreed milestone deliverables and accept the contract here: ${inviteUrl}`
+    `Hi! I've created our project proposal for "${project.title}" (${formatCurrency(project.totalBudget, project.currency)}) on PayZorr. Please review the agreed milestone deliverables and accept the contract here: ${inviteUrl}`
   );
   const whatsappUrl = `https://api.whatsapp.com/send?text=${whatsappText}`;
 
-  const emailSubject = encodeURIComponent(`Project Proposal: ${project.title} on MilestoneOS`);
+  const emailSubject = encodeURIComponent(`Project Proposal: ${project.title} on PayZorr`);
   const emailBody = encodeURIComponent(
-    `Hello,\n\nI have prepared the project proposal for "${project.title}" (${formatCurrency(project.totalBudget, project.currency)} across ${project.milestones.length} milestones) on MilestoneOS.\n\nPlease inspect the agreed deliverables and acceptance criteria to activate the contract:\n${inviteUrl}\n\nBest regards,\n${project.initiatedBy === "client" ? project.client.name : project.freelancer.name}`
+    `Hello,\n\nI have prepared the project proposal for "${project.title}" (${formatCurrency(project.totalBudget, project.currency)} across ${project.milestones.length} milestones) on PayZorr.\n\nPlease inspect the agreed deliverables and acceptance criteria to activate the contract:\n${inviteUrl}\n\nBest regards,\n${project.initiatedBy === "client" ? project.client.name : project.freelancer.name}`
   );
   const emailUrl = `mailto:?subject=${emailSubject}&body=${emailBody}`;
 
@@ -172,7 +172,7 @@ export default function ShareInvitationModal({
               <span>Safe Mutual Agreement Process</span>
             </div>
             <p>
-              Opening this link does not automatically accept the project. The recipient must authenticate on MilestoneOS, inspect the agreed milestone criteria, and explicitly click <strong>Accept Proposal</strong> to activate work and escrow.
+              Opening this link does not automatically accept the project. The recipient must authenticate on PayZorr, inspect the agreed milestone criteria, and explicitly click <strong>Accept Proposal</strong> to activate work and escrow.
             </p>
           </div>
         </div>

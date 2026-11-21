@@ -1,4 +1,4 @@
-# MilestoneOS
+# PayZorr
 
 Milestone-based freelance contracts with AI-assisted delivery review and secure payments.
 

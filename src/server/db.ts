@@ -1,5 +1,5 @@
 /**
- * MilestoneOS — Server-Side Multi-User Database & Ledger Store
+ * PayZorr — Server-Side Multi-User Database & Ledger Store
  * Single Source of Truth: Supabase PostgreSQL
  *
  * Design notes

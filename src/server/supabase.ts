@@ -1,5 +1,5 @@
 /**
- * MilestoneOS — Server-Side Supabase Client
+ * PayZorr — Server-Side Supabase Client
  * Uses the Service Role Key (or Anon Key) for secure backend operations.
  */
 

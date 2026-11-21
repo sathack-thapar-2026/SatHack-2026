@@ -1,5 +1,5 @@
-# MilestoneOS — Hackathon Architecture & Integration Research
-**Project:** MilestoneOS  
+# PayZorr — Hackathon Architecture & Integration Research
+**Project:** PayZorr  
 **Status:** Phase 1 Architectural Blueprint & Documentation  
 
 ---
@@ -18,7 +18,7 @@ All payment gateway API calls are made from isolated server routes (Next.js Serv
 - **Body:** `grant_type=client_credentials`
 - **Response:** Bearer access token (valid for 9 hours).
 
-### Order Lifecycle in MilestoneOS
+### Order Lifecycle in PayZorr
 1. **Order Creation:** Client reviews AI report and clicks "Approve & Pay". Frontend calls `/api/payments/create-order` with `milestoneId` and `amount`.
    - **Endpoint:** `POST https://<gateway-sandbox-host>/v2/checkout/orders`
    - **Intent:** `CAPTURE`
@@ -33,13 +33,13 @@ All payment gateway API calls are made from isolated server routes (Next.js Serv
 In real-world freelance marketplaces, handling payments between two independent third parties (client to freelancer) involves regulated escrow or multiparty payouts:
 - **Multiparty Payments / Partner Platform:** Requires gateway partner approval, onboarding sellers as merchants, and partner fees.
 - **Payouts API:** Batch or individual payouts to freelancer payout email addresses.
-- **MilestoneOS Prototype Implementation:** For the hackathon sandbox demonstration, MilestoneOS operates with a configured Sandbox Business receiving account representing the platform treasury, verifying and capturing each milestone payment before marking the deliverable as released.
+- **PayZorr Prototype Implementation:** For the hackathon sandbox demonstration, PayZorr operates with a configured Sandbox Business receiving account representing the platform treasury, verifying and capturing each milestone payment before marking the deliverable as released.
 
 ### Negative Testing Scenarios
 The gateway sandbox supports simulation headers to test edge cases:
 - `Gateway-Mock-Response: {"mock_application_codes": "INSTRUMENT_DECLINED"}`
 - `Gateway-Mock-Response: {"mock_application_codes": "PAYER_ACTION_REQUIRED"}`
-- Error handling in MilestoneOS prevents milestone state changes if capture fails or is aborted.
+- Error handling in PayZorr prevents milestone state changes if capture fails or is aborted.
 
 ---
 
@@ -54,7 +54,7 @@ The gateway sandbox supports simulation headers to test edge cases:
 - **Why Flash?** Sub-second response latency, multimodal input support (code files, commit diffs, UI screenshots, test outputs), and 1M token context window.
 - **Structured JSON Schema:** Enforced via `response_mime_type: "application/json"` and `response_schema` so results parse directly into typed TypeScript interfaces.
 
-### Core AI Tasks in MilestoneOS
+### Core AI Tasks in PayZorr
 1. **Requirement Scoping:** Converts ambiguous client text into atomic, testable acceptance criteria during milestone setup.
 2. **Deliverable Audit:** Compares GitHub commit diffs, file trees, or screenshots against criteria.
 3. **Strict Categorization:**
@@ -97,7 +97,7 @@ The gateway sandbox supports simulation headers to test edge cases:
 - **Eligibility:** Free Community edition covers core requirements; Enterprise trial available for advanced pivot analytics.
 
 ### APIMatic (Workflow Asset)
-- **Use Case:** Validating OpenAPI schemas for the MilestoneOS backend routes and payment webhook contracts. Useful during development to document server endpoints for hackathon judges.
+- **Use Case:** Validating OpenAPI schemas for the PayZorr backend routes and payment webhook contracts. Useful during development to document server endpoints for hackathon judges.
 
 ---
 

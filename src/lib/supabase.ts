@@ -1,5 +1,5 @@
 /**
- * MilestoneOS — Supabase Client & Auth Helper
+ * PayZorr — Supabase Client & Auth Helper
  * Connects to Supabase when environment variables are defined in .env.local
  */
 

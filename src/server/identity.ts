@@ -40,7 +40,7 @@ export function escapeLike(value: string): string {
  * 4. Prevents self-assignment (proposer cannot be recipient).
  * 5. Returns the exact Supabase Auth UUID and profile attributes.
  *
- * Every MilestoneOS account owns both a client ID (CL-) and a freelancer ID (FL-)
+ * Every PayZorr account owns both a client ID (CL-) and a freelancer ID (FL-)
  * derived from one shared base code, so any account can act on either side.
  */
 export async function resolveCounterpartyIdentity(params: {
@@ -87,7 +87,7 @@ export async function resolveCounterpartyIdentity(params: {
     };
   }
 
-  // Anything that is not a UUID, an email, or a well-formed MilestoneOS ID cannot match an account.
+  // Anything that is not a UUID, an email, or a well-formed PayZorr ID cannot match an account.
   if (!isUUID && !isEmail && !baseCode && !FULL_ID_REGEX.test(cleanInput)) {
     return {
       success: false,
