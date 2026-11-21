@@ -293,17 +293,17 @@ export default function HillsLandscapeBackground() {
           backgroundColor="transparent"
           lightMode={false} // Luminous additive blooming in both themes for true ethereal glow
           threadCount={6}
-          speed={0.004} // Slowed movement by 90% (from 0.038 to 0.004) for an ultra-subtle, peaceful ambient drift
+          speed={0.011} // Slowed speed by 70% (from 0.038 to 0.011) for ultra-slow, peaceful ethereal drift
           frequency={3.8}
           spread={0.28}
           position={0.48}
-          glow={isDark ? 0.0195 : 0.0165} // Calibrated glow to prevent text interference
+          glow={isDark ? 0.0195 : 0.0165} // Reduced glow by 25% (from 0.026/0.022) to prevent text interference
           brightness={isDark ? 0.78 : 0.70} // Restrained brightness for pristine text readability
           thickness={0.95}
           fade={0.02}
-          shimmer={false} // Clean, steady lines without rapid shimmer vibrations
+          shimmer={true}
           mouseInteraction={true}
-          mouseStrength={0.15}
+          mouseStrength={0.25}
           pulseOnClick={false}
           dpr={1}
         />
