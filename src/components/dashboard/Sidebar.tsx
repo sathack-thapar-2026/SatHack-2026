@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrency } from "@/lib/dashboard-data";
+
 import Link from "next/link";
 import { useDashboard, DashboardTab } from "@/lib/dashboard-store";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -75,10 +77,11 @@ export default function Sidebar({
     }
   };
 
-  const myId = authUser?.id || "253b60b8-a9e0-4d3d-96af-618f78c1bf80";
-  const myEmail = (authUser?.email || "rohan.verma@craftdev.io").trim().toLowerCase();
-  const myMsoId = (authUser?.milestoneOSId || (role === "client" ? "CL-2W8L41" : "FL-2W8L41")).trim().toUpperCase();
-  const myBase = extractBaseCode(myMsoId) || authUser?.baseCode?.trim().toUpperCase() || "2W8L41";
+  // Who "I" am comes only from the signed-in account; there is no built-in fallback identity.
+  const myId = authUser?.id || "";
+  const myEmail = (authUser?.email || "").trim().toLowerCase();
+  const myMsoId = (authUser?.milestoneOSId || "").trim().toUpperCase();
+  const myBase = extractBaseCode(myMsoId) || authUser?.baseCode?.trim().toUpperCase() || "";
 
   // Count incoming proposals strictly awaiting action by this recipient
   const incomingPendingCount = projects.filter((p) => {
@@ -229,7 +232,7 @@ export default function Sidebar({
                     )}
                   </div>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                    ${activeProject.totalBudget.toLocaleString()} USD • {activeProject.milestones.length} Milestones
+                    {formatCurrency(activeProject.totalBudget, activeProject.currency)} • {activeProject.milestones.length} Milestones
                   </p>
                 </button>
                 <button
@@ -282,7 +285,7 @@ export default function Sidebar({
                       >
                         <span className="truncate">{proj.title}</span>
                         <span className="text-[10px] opacity-75 shrink-0 ml-1.5">
-                          ${proj.totalBudget.toLocaleString()}
+                          {formatCurrency(proj.totalBudget, proj.currency, { showCode: false })}
                         </span>
                       </button>
                     ))}
@@ -314,7 +317,7 @@ export default function Sidebar({
                           <span>{proj.title}</span>
                         </span>
                         <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold shrink-0 ml-1.5">
-                          ${proj.totalBudget.toLocaleString()}
+                          {formatCurrency(proj.totalBudget, proj.currency, { showCode: false })}
                         </span>
                       </button>
                     ))}

@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       console.warn(`Order ${orderId} does not belong to ${projectId}:${milestoneId} (custom_id=${order.customId})`);
       throw new DomainError(403, "This payment order does not match the requested milestone contract.", "ORDER_MISMATCH");
     }
-    if (order.currency !== contractCurrency || Math.abs(order.amount - expectedAmount) > 0.005) {
+    if (order.currency !== contractCurrency || Math.round(order.amount * 100) !== Math.round(expectedAmount * 100)) {
       console.warn(
         `Order ${orderId} amount mismatch: expected ${expectedAmount} ${contractCurrency}, order ${order.amount} ${order.currency}`
       );
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     // 6. Post-capture sanity check (defence in depth)
     if (
       captureResult.currency.toUpperCase() !== contractCurrency ||
-      Math.abs(captureResult.amount - expectedAmount) > 0.005
+      Math.round(captureResult.amount * 100) !== Math.round(expectedAmount * 100)
     ) {
       console.error(
         `Captured amount mismatch for order ${orderId}: expected ${expectedAmount} ${contractCurrency}, captured ${captureResult.amount} ${captureResult.currency}`

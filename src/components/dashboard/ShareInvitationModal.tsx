@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrency } from "@/lib/dashboard-data";
+
 import { useState } from "react";
 import {
   X,
@@ -42,13 +44,13 @@ export default function ShareInvitationModal({
   };
 
   const whatsappText = encodeURIComponent(
-    `Hi! I've created our project proposal for "${project.title}" ($${project.totalBudget.toLocaleString()} USD) on MilestoneOS. Please review the agreed milestone deliverables and accept the contract here: ${inviteUrl}`
+    `Hi! I've created our project proposal for "${project.title}" (${formatCurrency(project.totalBudget, project.currency)}) on MilestoneOS. Please review the agreed milestone deliverables and accept the contract here: ${inviteUrl}`
   );
   const whatsappUrl = `https://api.whatsapp.com/send?text=${whatsappText}`;
 
   const emailSubject = encodeURIComponent(`Project Proposal: ${project.title} on MilestoneOS`);
   const emailBody = encodeURIComponent(
-    `Hello,\n\nI have prepared the project proposal for "${project.title}" ($${project.totalBudget.toLocaleString()} USD across ${project.milestones.length} milestones) on MilestoneOS.\n\nPlease inspect the agreed deliverables and acceptance criteria to activate the contract:\n${inviteUrl}\n\nBest regards,\n${project.initiatedBy === "client" ? project.client.name : project.freelancer.name}`
+    `Hello,\n\nI have prepared the project proposal for "${project.title}" (${formatCurrency(project.totalBudget, project.currency)} across ${project.milestones.length} milestones) on MilestoneOS.\n\nPlease inspect the agreed deliverables and acceptance criteria to activate the contract:\n${inviteUrl}\n\nBest regards,\n${project.initiatedBy === "client" ? project.client.name : project.freelancer.name}`
   );
   const emailUrl = `mailto:?subject=${emailSubject}&body=${emailBody}`;
 
@@ -89,7 +91,7 @@ export default function ShareInvitationModal({
                 {project.title}
               </span>
               <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">
-                ${project.totalBudget.toLocaleString()} USD
+                {formatCurrency(project.totalBudget, project.currency)}
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">

@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     const lookupKey = (id || email || query || "").trim();
     if (!lookupKey) {
       return NextResponse.json(
-        { found: false, error: "Please provide a valid account ID, code, or email (e.g. ?id=FL-2W8L41 or ?email=user@example.com)." },
+        { found: false, error: "Please provide a valid account ID, code, or email (e.g. ?id=FL-XXXXXX or ?email=user@example.com)." },
         { status: 400 }
       );
     }

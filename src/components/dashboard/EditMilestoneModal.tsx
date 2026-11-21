@@ -1,5 +1,7 @@
 "use client";
 
+import { getCurrencySymbol } from "@/lib/dashboard-data";
+
 import { useState, useEffect, useRef } from "react";
 import { X, Save, Calendar, DollarSign, Edit3, AlertCircle, Lock, ShieldCheck } from "lucide-react";
 import { Milestone, ProjectContract, isProjectAccepted } from "@/lib/dashboard-data";
@@ -31,7 +33,7 @@ export default function EditMilestoneModal({
 
   const isAccepted = project ? isProjectAccepted(project) : false;
   const curr = milestone?.currency || project?.currency || "USD";
-  const currSym = curr.toUpperCase() === "INR" ? "₹" : "$";
+  const currSym = getCurrencySymbol(curr);
   const otherPartyName = project
     ? role === "client"
       ? project.freelancer.name
@@ -192,8 +194,8 @@ export default function EditMilestoneModal({
                 </div>
                 <input
                   type="number"
-                  min="1"
-                  step="1"
+                  min="0.01"
+                  step="0.01"
                   disabled={isAccepted}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value === "" ? "" : Number(e.target.value))}

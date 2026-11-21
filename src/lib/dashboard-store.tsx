@@ -7,26 +7,23 @@ import {
   MilestoneStatus,
   TransactionRecord,
   NotificationItem,
-  INITIAL_PROJECTS,
-  INITIAL_NOTIFICATIONS,
-  INITIAL_TRANSACTIONS,
   AIAssessment,
   MilestoneSubmission,
   ActivityItem,
   DeliverableLink,
   DeliverableAttachment,
   MilestoneOSUser,
-  MILESTONEOS_DIRECTORY,
   generateMilestoneOSId,
   generateBaseCode,
   extractBaseCode,
   formatClientId,
   formatFreelancerId,
   generateInvitationToken,
-  lookupMilestoneOSUser,
   isProjectCompleted,
   isProjectAccepted,
   formatCurrency,
+  getCurrencySymbol,
+  roundMoney,
 } from "./dashboard-data";
 import { getSupabaseClient, isSupabaseConfigured } from "./supabase";
 import { authFetch } from "./api-client";
@@ -100,32 +97,6 @@ function slimProjectsForCache(projects: ProjectContract[]): ProjectContract[] {
     })),
   }));
 }
-
-export const DEFAULT_USER_PROFILES: UserProfiles = {
-  client: {
-    id: "253b60b8-a9e0-4d3d-96af-618f78c1bf80",
-    baseCode: "2W8L41",
-    clientId: "CL-2W8L41",
-    freelancerId: "FL-2W8L41",
-    milestoneOSId: "CL-2W8L41",
-    name: "Rohan Verma",
-    email: "rohan.verma@craftdev.io",
-    avatar: "RV",
-    company: "CraftDev Engineering",
-  },
-  freelancer: {
-    id: "253b60b8-a9e0-4d3d-96af-618f78c1bf80",
-    baseCode: "2W8L41",
-    clientId: "CL-2W8L41",
-    freelancerId: "FL-2W8L41",
-    milestoneOSId: "FL-2W8L41",
-    name: "Rohan Verma",
-    email: "rohan.verma@craftdev.io",
-    avatar: "RV",
-    title: "Senior Full-Stack Engineer",
-    rating: 4.98,
-  },
-};
 
 export interface AlertState {
   isOpen: boolean;
@@ -211,7 +182,6 @@ interface DashboardContextType {
   acceptInvitationByToken: (
     token: string
   ) => Promise<{ success: boolean; project?: ProjectContract; error?: string }>;
-  lookupUserById: (id: string) => MilestoneOSUser | null;
   addMilestone: (
     projectId: string,
     data: {
@@ -893,7 +863,7 @@ export function DashboardProvider({
           actor: senderName,
           actorRole: isClientInitiator ? "client" : "freelancer",
           action: asDraft
-            ? `Created draft project "${newProjectData.title}" ($${newProjectData.totalBudget.toLocaleString()} USD).`
+            ? `Created draft project "${newProjectData.title}" (${formatCurrency(newProjectData.totalBudget, newProjectData.currency)}).`
             : newProjectData.isPublicInvitation
             ? `${senderName} created project proposal "${newProjectData.title}" and generated a private shareable invitation link.`
             : `${senderName} submitted project proposal "${newProjectData.title}" to ${recipientName} for acceptance.`,
@@ -932,13 +902,12 @@ export function DashboardProvider({
       });
 
     if (!asDraft) {
-      const curr = newProject.currency || "USD";
-      const currSym = curr.toUpperCase() === "INR" ? "₹" : "$";
+      const proposalBudget = formatCurrency(newProject.totalBudget, newProject.currency);
       const senderNotif: NotificationItem = {
         id: `notif_${Date.now()}`,
         timestamp: "Just now",
         title: isClientInitiator ? "Proposal Dispatched" : "Proposal Submitted",
-        message: `Proposal for "${newProject.title}" (${currSym}${newProject.totalBudget.toLocaleString()} ${curr}) submitted to ${recipientName}. Awaiting counterparty review.`,
+        message: `Proposal for "${newProject.title}" (${proposalBudget}) submitted to ${recipientName}. Awaiting counterparty review.`,
         type: "system",
         unread: false,
         projectId: id,
@@ -1220,10 +1189,6 @@ export function DashboardProvider({
     }
   };
 
-  const lookupUserById = (id: string): MilestoneOSUser | null => {
-    return lookupMilestoneOSUser(id);
-  };
-
   /**
    * Runs the server call that backs an optimistic screen change. If the server refuses
    * (not allowed, wrong state, offline) the reason is shown and the screen is re-synced
@@ -1269,7 +1234,7 @@ export function DashboardProvider({
           title: data.title,
           description: data.description || "Milestone deliverables agreed with client.",
           amount: data.amount,
-          currency: data.currency || project.currency || "USD",
+          currency: project.currency || "USD",
           dueDate: data.dueDate || project.targetDeadline || "TBD",
           status: "not_started",
           acceptanceCriteria: (data.acceptanceCriteria || []).map((critTitle, idx) => ({
@@ -1282,20 +1247,19 @@ export function DashboardProvider({
         };
 
         const actorName = userProfiles[role].name;
-        const curr = data.currency || project.currency || "USD";
-        const currSym = curr.toUpperCase() === "INR" ? "₹" : "$";
+        const curr = project.currency || "USD"; // milestones always use the project's currency
         const newLog: ActivityItem = {
           id: `act_${Date.now()}`,
           timestamp: "Just now",
           actor: actorName,
           actorRole: role,
-          action: `${actorName} added a new milestone: Stage 0${newStageNumber}: "${data.title}" (${currSym}${data.amount.toLocaleString()} ${curr}).`,
+          action: `${actorName} added a new milestone: Stage 0${newStageNumber}: "${data.title}" (${formatCurrency(data.amount, curr)}).`,
           milestoneTitle: data.title,
         };
 
         return {
           ...project,
-          totalBudget: project.totalBudget + data.amount,
+          totalBudget: roundMoney(project.totalBudget + data.amount),
           milestones: [...project.milestones, newMilestone],
           activityLog: [newLog, ...project.activityLog],
         };
@@ -1303,7 +1267,7 @@ export function DashboardProvider({
     );
 
     // Sync to backend API
-    const curr = data.currency || rawProjects.find((p) => p.id === projectId)?.currency || "USD";
+    const curr = rawProjects.find((p) => p.id === projectId)?.currency || "USD";
     syncOrRevert(
       authFetch("/api/milestones", {
         method: "POST",
@@ -1368,7 +1332,7 @@ export function DashboardProvider({
 
         return {
           ...project,
-          totalBudget: project.totalBudget + diff,
+          totalBudget: roundMoney(project.totalBudget + diff),
           milestones: updatedMilestones,
           activityLog: [newLog, ...project.activityLog],
         };
@@ -1729,7 +1693,7 @@ export function DashboardProvider({
                 actor: "MilestoneOS",
                 actorRole: "payment",
                 action: `Project "${project.title}" completed! All ${updatedMilestones.length} milestones paid and fully settled.`,
-                details: `100% of milestones completed. Total payout: ${formatCurrency(project.totalPaid + paidAmount, project.currency)}.`,
+                details: `100% of milestones completed. Total payout: ${formatCurrency(roundMoney(project.totalPaid + paidAmount), project.currency)}.`,
               },
             ]
           : [];
@@ -1737,8 +1701,8 @@ export function DashboardProvider({
         return {
           ...project,
           status: allMilestonesPaid ? ("completed" as const) : project.status,
-          totalPaid: project.totalPaid + paidAmount,
-          escrowReleased: project.escrowReleased + paidAmount,
+          totalPaid: roundMoney(project.totalPaid + paidAmount),
+          escrowReleased: roundMoney(project.escrowReleased + paidAmount),
           milestones: updatedMilestones,
           activityLog: [
             ...completionActivity,
@@ -1828,7 +1792,6 @@ export function DashboardProvider({
         resubmitProposal,
         revokeInvitation,
         acceptInvitationByToken,
-        lookupUserById,
         addMilestone,
         editMilestone,
         startMilestoneWork,

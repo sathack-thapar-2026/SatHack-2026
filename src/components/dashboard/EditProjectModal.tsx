@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrency } from "@/lib/dashboard-data";
+
 import { useState, useEffect } from "react";
 import { X, Save, Archive, Trash2, ShieldCheck } from "lucide-react";
 import { ProjectContract } from "@/lib/dashboard-data";
@@ -78,7 +80,7 @@ export default function EditProjectModal({ project, isOpen, onClose }: EditProje
               <div>
                 <p className="font-bold">Agreed Contract Terms Locked</p>
                 <p className="text-[11px] text-blue-800 dark:text-blue-300 mt-0.5 leading-relaxed">
-                  Budget (${project.totalBudget.toLocaleString()} USD across {project.milestones.length} milestones) and milestone acceptance criteria are mutually agreed between {project.client.name} and {project.freelancer.name}. Any milestone alterations require a formal proposal resubmission.
+                  Budget ({formatCurrency(project.totalBudget, project.currency)} across {project.milestones.length} milestones) and milestone acceptance criteria are mutually agreed between {project.client.name} and {project.freelancer.name}. Any milestone alterations require a formal proposal resubmission.
                 </p>
               </div>
             </div>

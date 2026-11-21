@@ -21,13 +21,16 @@ import {
   Calendar,
 } from "lucide-react";
 import {
-  FREELANCER_OPTIONS,
-  CLIENT_OPTIONS,
+  PROJECT_CURRENCIES,
+  SUPPORTED_CHECKOUT_CURRENCIES,
+  getCurrencySymbol,
+  formatCurrency,
+  normalizeCurrency,
+  roundMoney,
   Milestone,
   AcceptanceCriterion,
   ProjectContract,
   MilestoneOSUser,
-  lookupMilestoneOSUser,
   generateInvitationToken,
   extractBaseCode,
   formatClientId,
@@ -36,6 +39,14 @@ import {
 import { useDashboard } from "@/lib/dashboard-store";
 import { authFetch } from "@/lib/api-client";
 import ShareInvitationModal from "./ShareInvitationModal";
+
+/** Keeps digits and at most one decimal point with up to 2 decimals ("12.50"); strips everything else. */
+function sanitizeAmountInput(raw: string): string {
+  const cleaned = raw.replace(/[^0-9.]/g, "");
+  const [intPart, ...rest] = cleaned.split(".");
+  const whole = intPart.replace(/^0+(?=\d)/, "");
+  return rest.length > 0 ? `${whole}.${rest.join("").slice(0, 2)}` : whole;
+}
 
 interface NewProjectModalProps {
   isOpen: boolean;
@@ -152,10 +163,8 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
   const [description, setDescription] = useState(initialProject?.description || "");
   const [category, setCategory] = useState(initialProject?.category || "");
   const [targetDeadline, setTargetDeadline] = useState(initialProject?.targetDeadline || "");
-  const [currency, setCurrency] = useState<"USD" | "INR">(
-    initialProject?.currency === "INR" ? "INR" : "USD"
-  );
-  const currencySymbol = currency === "INR" ? "₹" : "$";
+  const [currency, setCurrency] = useState<string>(normalizeCurrency(initialProject?.currency));
+  const currencySymbol = getCurrencySymbol(currency);
   const [proposedBudget, setProposedBudget] = useState<string>(
     initialProject ? String(initialProject.totalBudget) : ""
   );
@@ -193,7 +202,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
       setTitle(initialProject.title);
       setDescription(initialProject.description);
       setCategory(initialProject.category || "");
-      setCurrency(initialProject.currency === "INR" ? "INR" : "USD");
+      setCurrency(normalizeCurrency(initialProject.currency));
       setTargetDeadline(initialProject.targetDeadline || "");
       setProposedBudget(initialProject.totalBudget ? String(initialProject.totalBudget) : "");
       setMilestones(
@@ -211,9 +220,23 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
         ? initialProject.freelancer.milestoneOSId
         : initialProject.client.milestoneOSId;
 
-      if (counterpartyId) {
-        const found = lookupMilestoneOSUser(counterpartyId, isClient ? "freelancer" : "client");
-        if (found) setSelectedUser(found);
+      const counterparty = isClient ? initialProject.freelancer : initialProject.client;
+      if (counterparty && counterpartyId) {
+        const base = extractBaseCode(counterpartyId);
+        setSelectedUser({
+          id: counterparty.id || "",
+          baseCode: base,
+          clientId: formatClientId(base),
+          freelancerId: formatFreelancerId(base),
+          milestoneOSId: counterpartyId,
+          name: counterparty.name,
+          email: counterparty.email,
+          avatar: counterparty.avatar,
+          role: isClient ? "freelancer" : "client",
+          company: "company" in counterparty ? counterparty.company : undefined,
+          title: "title" in counterparty ? counterparty.title : undefined,
+          rating: "rating" in counterparty ? counterparty.rating : undefined,
+        });
       }
     } else {
       setSelectedUser(null);
@@ -248,8 +271,8 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
 
   if (!isOpen && !shareModalOpen) return null;
 
-  const totalMilestonesSum = milestones.reduce((sum, m) => sum + (Number(m.amount) || 0), 0);
-  const numProposedBudget = Number(proposedBudget) || 0;
+  const totalMilestonesSum = roundMoney(milestones.reduce((sum, m) => sum + (Number(m.amount) || 0), 0));
+  const numProposedBudget = roundMoney(Number(proposedBudget) || 0);
   const isBudgetEntered = numProposedBudget > 0 || totalMilestonesSum > 0;
   const budgetMatches = isBudgetEntered && numProposedBudget === totalMilestonesSum;
 
@@ -259,7 +282,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
     setLookupError(null);
 
     if (!rawId) {
-      setLookupError(isClient ? "Please enter a Freelancer ID (e.g. FL-Q7EWTG)." : "Please enter a Client ID (e.g. CL-Q7EWTG).");
+      setLookupError(isClient ? "Please enter a Freelancer ID (e.g. FL-XXXXXX)." : "Please enter a Client ID (e.g. CL-XXXXXX).");
       return;
     }
 
@@ -269,24 +292,24 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
     // 1. When Client wants to hire a Freelancer: require FL- prefix; reject CL- prefix
     if (isClient) {
       if (rawId.startsWith("CL-")) {
-        setLookupError(`You entered a Client ID ('${rawId}'). When initiating a project as a Client, you must enter the Freelancer's ID starting with 'FL-' (e.g. FL-${baseCode || "Q7EWTG"}).`);
+        setLookupError(`You entered a Client ID ('${rawId}'). When initiating a project as a Client, you must enter the Freelancer's ID starting with 'FL-' (e.g. FL-${baseCode || "XXXXXX"}).`);
         setSelectedUser(null);
         return;
       }
       if (!rawId.startsWith("FL-") && !rawId.startsWith("MSO-")) {
-        setLookupError("Invalid format. Freelancer IDs start with 'FL-' followed by a 6-character code (e.g. FL-Q7EWTG).");
+        setLookupError("Invalid format. Freelancer IDs start with 'FL-' followed by a 6-character code (e.g. FL-XXXXXX).");
         setSelectedUser(null);
         return;
       }
     } else {
       // 2. When Freelancer wants to connect with a Client: require CL- prefix; reject FL- prefix
       if (rawId.startsWith("FL-")) {
-        setLookupError(`You entered a Freelancer ID ('${rawId}'). When proposing a project as a Freelancer, you must enter the Client's ID starting with 'CL-' (e.g. CL-${baseCode || "Q7EWTG"}).`);
+        setLookupError(`You entered a Freelancer ID ('${rawId}'). When proposing a project as a Freelancer, you must enter the Client's ID starting with 'CL-' (e.g. CL-${baseCode || "XXXXXX"}).`);
         setSelectedUser(null);
         return;
       }
       if (!rawId.startsWith("CL-") && !rawId.startsWith("MSO-")) {
-        setLookupError("Invalid format. Client IDs start with 'CL-' followed by a 6-character code (e.g. CL-Q7EWTG).");
+        setLookupError("Invalid format. Client IDs start with 'CL-' followed by a 6-character code (e.g. CL-XXXXXX).");
         setSelectedUser(null);
         return;
       }
@@ -422,17 +445,17 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
     }
 
     if (totalMilestonesSum <= 0) {
-      setFormError("Milestone amounts must be greater than $0.");
+      setFormError(`Milestone amounts must be greater than ${currencySymbol}0.`);
       return;
     }
 
     if (!budgetMatches && !asDraft) {
       setFormError(
-        `The total of milestone amounts ($${totalMilestonesSum.toLocaleString()}) does not match the proposed project budget ($${numProposedBudget.toLocaleString()}).`
+        `The total of milestone amounts (${formatCurrency(totalMilestonesSum, currency)}) does not match the proposed project budget (${formatCurrency(numProposedBudget, currency)}).`
       );
       showAlert({
         title: "Budget Mismatch",
-        message: `Milestone amounts sum to $${totalMilestonesSum.toLocaleString()} USD, but the proposed budget is $${numProposedBudget.toLocaleString()} USD. Please adjust milestone amounts or update the proposed budget.`,
+        message: `Milestone amounts sum to ${formatCurrency(totalMilestonesSum, currency)}, but the proposed budget is ${formatCurrency(numProposedBudget, currency)}. Please adjust milestone amounts or update the proposed budget.`,
         type: "warning",
       });
       return;
@@ -764,7 +787,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                                 handleLookupUserId();
                               }
                             }}
-                            placeholder={isClient ? "e.g. FL-Q7EWTG" : "e.g. CL-Q7EWTG"}
+                            placeholder={isClient ? "e.g. FL-XXXXXX" : "e.g. CL-XXXXXX"}
                             className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-300 bg-white dark:border-white/15 dark:bg-[#131C31] text-xs text-slate-900 dark:text-white placeholder-slate-400 font-mono focus:border-[#0070BA] focus:outline-none"
                           />
                         </div>
@@ -939,40 +962,27 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                         Proposed Project Budget ({currencySymbol} {currency}) *
                       </label>
-                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-0.5 rounded-lg text-[10px]">
-                        <button
-                          type="button"
-                          onClick={() => setCurrency("USD")}
-                          className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
-                            currency === "USD"
-                              ? "bg-white dark:bg-slate-800 text-[#0070BA] dark:text-sky-300 shadow-2xs"
-                              : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                          }`}
-                        >
-                          $ USD
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCurrency("INR")}
-                          className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
-                            currency === "INR"
-                              ? "bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-2xs"
-                              : "text-slate-500 hover:text-slate-800 dark:text-slate-400"
-                          }`}
-                        >
-                          ₹ INR
-                        </button>
-                      </div>
+                      <select
+                        value={currency}
+                        onChange={(e) => setCurrency(e.target.value)}
+                        aria-label="Project currency"
+                        className="rounded-lg border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-700 focus:border-[#0070BA] focus:outline-none dark:border-white/10 dark:bg-[#131C31] dark:text-slate-200 cursor-pointer"
+                      >
+                        {PROJECT_CURRENCIES.map((code) => (
+                          <option key={code} value={code}>
+                            {getCurrencySymbol(code).trim()} {code}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{currencySymbol}</span>
                       <input
                         type="text"
-                        inputMode="numeric"
+                        inputMode="decimal"
                         value={proposedBudget}
                         onChange={(e) => {
-                          let sanitized = e.target.value.replace(/[^0-9]/g, "");
-                          sanitized = sanitized.replace(/^0+(?=\d)/, "");
+                          const sanitized = sanitizeAmountInput(e.target.value);
                           setProposedBudget(sanitized);
                           if (formError) setFormError(null);
                         }}
@@ -980,9 +990,10 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                         className="w-full pl-7 pr-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-mono font-bold text-slate-900 focus:border-[#0070BA] focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
                       />
                     </div>
-                    {currency === "INR" && (
+                    {!SUPPORTED_CHECKOUT_CURRENCIES.includes(currency) && (
                       <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
-                        Note: Secure escrow checkout settles in USD. Contracts requiring checkout funding should be denominated in USD.
+                        Note: secure checkout cannot settle {currency}, so milestones in this currency cannot be paid through it.
+                        Use {SUPPORTED_CHECKOUT_CURRENCIES.join(", ")} if you want to fund this contract here.
                       </p>
                     )}
                   </div>
@@ -1069,12 +1080,11 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">{currencySymbol}</span>
                             <input
                               type="text"
-                              inputMode="numeric"
+                              inputMode="decimal"
                               required
                               value={m.amount}
                               onChange={(e) => {
-                                let sanitized = e.target.value.replace(/[^0-9]/g, "");
-                                sanitized = sanitized.replace(/^0+(?=\d)/, "");
+                                const sanitized = sanitizeAmountInput(e.target.value);
                                 handleUpdateMilestone(mIdx, "amount", sanitized);
                               }}
                               placeholder={currency === "INR" ? "e.g. 25000" : "e.g. 1500"}
@@ -1200,7 +1210,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                     )}
                   </div>
                   <span className="font-mono font-black text-base text-slate-900 dark:text-white">
-                    {currencySymbol}{totalMilestonesSum.toLocaleString()} {currency}
+                    {formatCurrency(totalMilestonesSum, currency)}
                   </span>
                   <span className="text-[11px] text-slate-500 ml-2">
                     ({milestones.length} stage{milestones.length === 1 ? "" : "s"})
@@ -1213,7 +1223,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                     onClick={() => setProposedBudget(String(totalMilestonesSum))}
                     className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold cursor-pointer transition-colors shrink-0 shadow-2xs"
                   >
-                    Adjust Budget to {currencySymbol}{totalMilestonesSum.toLocaleString()} {currency}
+                    Adjust Budget to {formatCurrency(totalMilestonesSum, currency)}
                   </button>
                 )}
               </div>

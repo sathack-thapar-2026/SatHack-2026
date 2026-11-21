@@ -32,6 +32,13 @@ import { isSupabaseConfigured, getSupabaseClient } from "@/lib/supabase";
 
 type AuthMode = "login" | "signup";
 
+// Optional one-click demo account. It is configured through environment variables
+// (NEXT_PUBLIC_DEMO_EMAIL / _PASSWORD / _NAME); when they are not set the demo section is hidden.
+const DEMO_EMAIL = process.env.NEXT_PUBLIC_DEMO_EMAIL || "";
+const DEMO_PASSWORD = process.env.NEXT_PUBLIC_DEMO_PASSWORD || "";
+const DEMO_NAME = process.env.NEXT_PUBLIC_DEMO_NAME || "Demo User";
+const DEMO_ENABLED = Boolean(DEMO_EMAIL && DEMO_PASSWORD);
+
 /** Only same-site paths are allowed as a post-login destination (blocks open redirects). */
 function safeReturnUrl(raw: string | null, fallback: string): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return fallback;
@@ -112,28 +119,27 @@ function AuthForm() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    const demoUser = {
-      name: "Rohan Verma",
-      email: "rohan.verma@craftdev.io",
-      id: demoRole === "client" ? "CL-2W8L41" : "FL-2W8L41",
-      password: "Password123!",
-    };
+    if (!DEMO_ENABLED) {
+      setLoading(false);
+      setErrorMsg("The demo account is not configured.");
+      return;
+    }
 
     const supabaseClient = getSupabaseClient();
     if (supabaseClient) {
       try {
         const { data, error } = await supabaseClient.auth.signInWithPassword({
-          email: demoUser.email,
-          password: demoUser.password,
+          email: DEMO_EMAIL,
+          password: DEMO_PASSWORD,
         });
 
         if (!error && data.user) {
           const userMeta = data.user.user_metadata || {};
-          const userName = userMeta.name || demoUser.name;
-          const userMsoId = demoRole === "client" ? "CL-2W8L41" : "FL-2W8L41";
+          const userName = userMeta.name || DEMO_NAME;
+          const userMsoId = userMeta.milestoneOSId || generateMilestoneOSId();
 
           localStorage.removeItem("milestoneos_demo_mode");
-          syncLocalProfile(userName, demoUser.email, userMsoId, demoRole);
+          syncLocalProfile(userName, DEMO_EMAIL, userMsoId, demoRole);
           setSuccessMsg(`Welcome, ${userName}! Signed in via Supabase Auth.`);
           setTimeout(() => {
             router.push(`/dashboard?role=${demoRole}`);
@@ -312,6 +318,8 @@ function AuthForm() {
           </p>
         </div>
 
+        {DEMO_ENABLED && (
+          <>
         {/* INSTANT HACKATHON DEMO ACCESS (Visually Distinct Dedicated Section) */}
         <div className="mt-5 rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/[0.08] via-sky-500/[0.03] to-blue-500/[0.05] p-4 dark:border-amber-400/25 dark:from-amber-400/[0.05] dark:via-sky-400/[0.02] dark:to-indigo-400/[0.03] backdrop-blur-md space-y-3 shadow-xs">
           <div className="flex items-center justify-between">
@@ -350,17 +358,17 @@ function AuthForm() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
                     <User className="h-3 w-3 text-[#0070BA] dark:text-sky-400" />
-                    <span>Rohan Verma (Client)</span>
+                    <span>{DEMO_NAME} (Client)</span>
                   </span>
                   {demoPerspective === "client" && (
                     <span className="h-1.5 w-1.5 rounded-full bg-[#0070BA] dark:bg-sky-400" />
                   )}
                 </div>
                 <span className="text-[10px] font-semibold text-[#0070BA] dark:text-sky-300 mt-0.5">
-                  Client Perspective • CL-2W8L41
+                  Client Perspective
                 </span>
                 <span className="text-[9px] text-slate-500 dark:text-slate-400">
-                  CraftDev Engineering • Escrow Funding
+                  Review work &amp; release payments
                 </span>
               </button>
 
@@ -376,17 +384,17 @@ function AuthForm() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
                     <Briefcase className="h-3 w-3 text-emerald-500 dark:text-emerald-400" />
-                    <span>Rohan Verma (Freelancer)</span>
+                    <span>{DEMO_NAME} (Freelancer)</span>
                   </span>
                   {demoPerspective === "freelancer" && (
                     <span className="h-1.5 w-1.5 rounded-full bg-[#0070BA] dark:bg-sky-400" />
                   )}
                 </div>
                 <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                  Freelancer Perspective • FL-2W8L41
+                  Freelancer Perspective
                 </span>
                 <span className="text-[9px] text-slate-500 dark:text-slate-400">
-                  Senior Full-Stack • AI verified audits
+                  Submit work &amp; get paid
                 </span>
               </button>
             </div>
@@ -400,7 +408,7 @@ function AuthForm() {
             className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-300/80 bg-white hover:bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-900 shadow-xs hover:shadow transition-all hover:scale-[1.005] active:scale-[0.99] dark:border-white/15 dark:bg-white/10 dark:text-white dark:hover:bg-white/15 cursor-pointer"
           >
             <Sparkles className="h-3.5 w-3.5 text-amber-500 dark:text-amber-400" />
-            <span>Explore Demo Workspace as Rohan Verma ({demoPerspective === "client" ? "Client" : "Freelancer"})</span>
+            <span>Explore Demo Workspace as {DEMO_NAME} ({demoPerspective === "client" ? "Client" : "Freelancer"})</span>
             <ArrowRight className="h-3.5 w-3.5 text-slate-400 dark:text-slate-300" />
           </button>
         </div>
@@ -413,6 +421,9 @@ function AuthForm() {
           </span>
           <div className="h-px flex-1 bg-slate-200/80 dark:bg-white/10" />
         </div>
+
+          </>
+        )}
 
         {/* Feedback Alerts */}
         {errorMsg && (

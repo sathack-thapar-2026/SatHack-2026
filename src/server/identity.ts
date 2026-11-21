@@ -32,7 +32,7 @@ export function escapeLike(value: string): string {
 /**
  * Universal Central Identity Resolution Function.
  *
- * Given an input (e.g. FL-2W8L41, CL-Q7EWTG, MSO-2W8L41, base code, email, or UUID),
+ * Given an input (e.g. FL-XXXXXX, CL-XXXXXX, MSO-XXXXXX, base code, email, or UUID),
  * resolves against public.profiles in Supabase PostgreSQL:
  * 1. Normalizes the entered ID (anything that is not a strict ID/email/UUID is rejected).
  * 2. Queries public.profiles by id, email, or milestone_os_id.
@@ -54,7 +54,7 @@ export async function resolveCounterpartyIdentity(params: {
   if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
     return {
       success: false,
-      error: `Please enter a valid ${expectedRole === "freelancer" ? "Freelancer ID (e.g. FL-2W8L41)" : "Client ID (e.g. CL-Q7EWTG)"}.`,
+      error: `Please enter a valid ${expectedRole === "freelancer" ? "Freelancer ID (e.g. FL-XXXXXX)" : "Client ID (e.g. CL-XXXXXX)"}.`,
       code: "INVALID_FORMAT",
     };
   }
@@ -74,7 +74,7 @@ export async function resolveCounterpartyIdentity(params: {
   if (expectedRole === "freelancer" && cleanInput.startsWith("CL-")) {
     return {
       success: false,
-      error: `You entered a Client ID ('${rawInput}'). When hiring a freelancer, you must enter the Freelancer's ID starting with 'FL-' (e.g. FL-${baseCode || "2W8L41"}).`,
+      error: `You entered a Client ID ('${rawInput}'). When hiring a freelancer, you must enter the Freelancer's ID starting with 'FL-' (e.g. FL-${baseCode || "XXXXXX"}).`,
       code: "ROLE_MISMATCH",
     };
   }
@@ -82,7 +82,7 @@ export async function resolveCounterpartyIdentity(params: {
   if (expectedRole === "client" && cleanInput.startsWith("FL-")) {
     return {
       success: false,
-      error: `You entered a Freelancer ID ('${rawInput}'). When proposing to a client, you must enter the Client's ID starting with 'CL-' (e.g. CL-${baseCode || "Q7EWTG"}).`,
+      error: `You entered a Freelancer ID ('${rawInput}'). When proposing to a client, you must enter the Client's ID starting with 'CL-' (e.g. CL-${baseCode || "XXXXXX"}).`,
       code: "ROLE_MISMATCH",
     };
   }
@@ -91,7 +91,7 @@ export async function resolveCounterpartyIdentity(params: {
   if (!isUUID && !isEmail && !baseCode && !FULL_ID_REGEX.test(cleanInput)) {
     return {
       success: false,
-      error: `"${rawInput}" is not a valid account ID. Use an ID like ${expectedRole === "freelancer" ? "FL-2W8L41" : "CL-Q7EWTG"}.`,
+      error: `"${rawInput}" is not a valid account ID. Use an ID like ${expectedRole === "freelancer" ? "FL-XXXXXX" : "CL-XXXXXX"}.`,
       code: "INVALID_FORMAT",
     };
   }

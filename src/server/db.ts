@@ -23,7 +23,8 @@ import {
   ActivityItem,
   extractBaseCode,
   isProjectAccepted,
-  getCurrencySymbol,
+  formatCurrency,
+  roundMoney,
 } from "@/lib/dashboard-data";
 import type { CaptureOrderResult } from "./payments";
 import { getServerSupabase } from "./supabase";
@@ -544,14 +545,13 @@ export const db = {
     // Persistent notification for the recipient
     const recipientId = project.initiatedBy === "client" ? project.freelancerId : project.clientId;
     const senderName = project.initiatedBy === "client" ? project.client?.name : project.freelancer?.name;
-    const currSym = getCurrencySymbol(project.currency);
     if (recipientId && isValidUUID(recipientId) && project.status !== "draft") {
       const { error: notifErr } = await supabase.from("notifications").insert({
         id: newId("notif"),
         user_id: recipientId,
         project_id: project.id,
         title: project.initiatedBy === "client" ? "Project Assignment Received" : "Incoming Project Proposal",
-        message: `${senderName || "Counterparty"} sent you a project proposal: "${project.title}" (${currSym}${project.totalBudget.toLocaleString()} ${project.currency || "USD"}). Review to accept.`,
+        message: `${senderName || "Counterparty"} sent you a project proposal: "${project.title}" (${formatCurrency(project.totalBudget, project.currency)}). Review to accept.`,
         type: "proposal",
         unread: true,
         is_demo: Boolean(project.isDemo),
@@ -818,8 +818,8 @@ export const db = {
       milestone.paidAt = paidAtDisplay;
       milestone.transactionId = capture.captureId;
 
-      project.totalPaid = (project.totalPaid || 0) + milestone.amount;
-      project.escrowReleased = (project.escrowReleased || 0) + milestone.amount;
+      project.totalPaid = roundMoney((project.totalPaid || 0) + milestone.amount);
+      project.escrowReleased = roundMoney((project.escrowReleased || 0) + milestone.amount);
       if (project.milestones.every((m) => m.status === "paid")) {
         project.status = "completed";
       }
@@ -827,7 +827,7 @@ export const db = {
       const curr = milestone.currency || project.currency || "USD";
       project.activityLog.unshift(
         newActivity({
-          action: `Released payment (${getCurrencySymbol(curr)}${milestone.amount.toLocaleString()} ${curr}) for Stage 0${milestone.stageNumber}: ${milestone.title} via Payment Capture ${capture.captureId}`,
+          action: `Released payment (${formatCurrency(milestone.amount, curr)}) for Stage 0${milestone.stageNumber}: ${milestone.title} via Payment Capture ${capture.captureId}`,
           actor: project.client.name,
           actorRole: "client",
           milestoneTitle: milestone.title,
@@ -931,12 +931,12 @@ export const db = {
       };
 
       project.milestones.push(newMilestone);
-      project.totalBudget = (project.totalBudget || 0) + milestone.amount;
+      project.totalBudget = roundMoney((project.totalBudget || 0) + milestone.amount);
 
       const curr = project.currency || "USD";
       project.activityLog.unshift(
         newActivity({
-          action: `${actor.name} added a new milestone: Stage 0${newStageNumber}: "${milestone.title}" (${getCurrencySymbol(curr)}${milestone.amount.toLocaleString()} ${curr}).`,
+          action: `${actor.name} added a new milestone: Stage 0${newStageNumber}: "${milestone.title}" (${formatCurrency(milestone.amount, curr)}).`,
           actor: actor.name,
           actorRole: actor.role,
           milestoneTitle: milestone.title,
@@ -966,7 +966,7 @@ export const db = {
 
       // Price is locked once the contract has been accepted.
       if (!isProjectAccepted(project) && updates.amount !== undefined && updates.amount !== milestone.amount) {
-        project.totalBudget = (project.totalBudget || 0) + (updates.amount - milestone.amount);
+        project.totalBudget = roundMoney((project.totalBudget || 0) + (updates.amount - milestone.amount));
         milestone.amount = updates.amount;
       }
 

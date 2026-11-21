@@ -12,7 +12,7 @@ interface PaymentsViewProps {
 }
 
 export default function PaymentsView({ onOpenPayment, onOpenInvoice }: PaymentsViewProps) {
-  const { projects, transactions, role } = useDashboard();
+  const { projects, transactions, role, showToast } = useDashboard();
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedTx, setSelectedTx] = useState<TransactionRecord | null>(null);
 
@@ -33,23 +33,15 @@ export default function PaymentsView({ onOpenPayment, onOpenInvoice }: PaymentsV
 
   const handleOpenInvoice = (tx: TransactionRecord) => {
     if (!onOpenInvoice) return;
-    const project = projects.find((p) => p.id === tx.projectId) || projects[0];
+    const project = projects.find((p) => p.id === tx.projectId);
     const milestone =
-      project?.milestones.find((m) => m.title === tx.milestoneTitle) ||
-      project?.milestones[0] || {
-        id: tx.id,
-        stageNumber: 1,
-        title: tx.milestoneTitle,
-        description: `Delivered milestone under ${tx.projectTitle}`,
-        amount: tx.amount,
-        currency: tx.currency,
-        dueDate: tx.paidAt,
-        paidAt: tx.paidAt,
-        status: "paid" as const,
-        acceptanceCriteria: [],
-        submissions: [],
-        transactionId: tx.transactionId,
-      };
+      project?.milestones.find((m) => m.id === tx.milestoneId) ||
+      project?.milestones.find((m) => m.status === "paid" && m.title === tx.milestoneTitle);
+
+    if (!project || !milestone) {
+      showToast("This payment's project is no longer available, so its invoice can't be opened.", "warning");
+      return;
+    }
 
     onOpenInvoice(project, milestone, tx.transactionId);
   };

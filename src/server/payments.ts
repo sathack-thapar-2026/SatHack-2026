@@ -107,6 +107,8 @@ export interface CreateOrderParams {
   amount: number;
   currency?: string;
   freelancerName?: string;
+  /** Public address of this app, used for checkout return links. */
+  appUrl?: string;
 }
 
 export interface PaymentOrderResult {
@@ -140,7 +142,7 @@ export async function createPaymentOrder(params: CreateOrderParams): Promise<Pay
     .trim()
     .slice(0, 127);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = params.appUrl || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const payload = {
     intent: "CAPTURE",
     purchase_units: [

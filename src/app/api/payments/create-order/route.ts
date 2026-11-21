@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
       amount: contractAmount,
       currency: contractCurrency,
       freelancerName: project.freelancer.name,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL || new URL(req.url).origin,
     });
 
     return NextResponse.json({

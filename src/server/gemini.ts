@@ -715,8 +715,14 @@ export async function generateInvoiceWithAI(
     hashVal |= 0;
   }
   const cleanHash = Math.abs(hashVal).toString(16).padStart(8, "0");
-  const invoiceNumber = `INV-2026-MS0${stageNum}-${cleanHash.toUpperCase().slice(0, 4)}`;
+  const invoiceDate = new Date(issueDate);
+  const invoiceYear = Number.isNaN(invoiceDate.getTime()) ? new Date().getFullYear() : invoiceDate.getFullYear();
+  const invoiceNumber = `INV-${invoiceYear}-MS0${stageNum}-${cleanHash.toUpperCase().slice(0, 4)}`;
   const cryptographicHash = `0x${cleanHash}${Date.now().toString(16).slice(-6)}f92a`;
+
+  // The AI score on an invoice is the real advisory audit score from the last submission (0 when no audit ran).
+  const submissionList = (milestone.submissions || []) as Array<{ aiAssessment?: { overallScore?: number } }>;
+  const lastAuditScore = Number(submissionList[submissionList.length - 1]?.aiAssessment?.overallScore) || 0;
 
   const criteriaCertified = (milestone.acceptanceCriteria || []).map((c) => ({
     title: c.title,
@@ -730,11 +736,11 @@ export async function generateInvoiceWithAI(
 You must NOT generate an HTML layout, CSS, or marketing essays.
 The invoice layout is already fixed and strictly restricted to 1 page.
 Your ONLY role is to provide 2 to 4 concise, genuine professional service line items for this completed software milestone.
-The unitPrice and amount of these line items must sum exactly to $${milestone.amount}.
+Do not worry about prices: the amounts are assigned by the system. Only write the descriptions and categories.
 
 PROJECT: ${projectTitle} (${input.category || "Software Development"})
 MILESTONE: Stage 0${stageNum} - ${milestone.title}: ${milestone.description}
-AMOUNT: $${milestone.amount} ${milestone.currency || "USD"}
+AMOUNT: ${milestone.amount} ${milestone.currency || "USD"}
 
 CRITERIA COMPLETED:
 ${(milestone.acceptanceCriteria || []).map((c, i) => `${i + 1}. ${c.title}`).join("\n")}
@@ -755,13 +761,17 @@ Return strictly valid JSON:
       const { data: parsed } = await requestGeminiJson(prompt, apiKey);
 
       if (parsed) {
-        const lineItems: InvoiceLineItem[] = Array.isArray(parsed.lineItems) && parsed.lineItems.length > 0
-            ? parsed.lineItems.map((item: any) => ({
-                description: item.description || "Milestone Deliverable",
-                category: item.category || "Development",
+        // Only the wording comes from the AI. Prices are always split from the contract amount in whole
+        // cents, so the lines can never disagree with the total that was actually paid.
+        const aiItems: any[] = Array.isArray(parsed.lineItems) ? parsed.lineItems.slice(0, 4) : [];
+        const lineItems: InvoiceLineItem[] =
+          aiItems.length > 0
+            ? splitMoney(milestone.amount, aiItems.length).map((amount, idx) => ({
+                description: String(aiItems[idx]?.description || "Milestone Deliverable").slice(0, 200),
+                category: String(aiItems[idx]?.category || "Development").slice(0, 60),
                 quantity: 1,
-                unitPrice: Number(item.unitPrice) || Number(item.amount) || milestone.amount,
-                amount: Number(item.amount) || Number(item.unitPrice) || milestone.amount,
+                unitPrice: amount,
+                amount,
               }))
             : buildDefaultLineItems(milestone);
 
@@ -783,16 +793,16 @@ Return strictly valid JSON:
             freelancer: {
               name: freelancer.name,
               email: freelancer.email,
-              title: freelancer.title || "Independent Contractor",
+              title: freelancer.title || "Freelancer",
               freelancerId: freelancer.freelancerId || freelancer.milestoneOSId,
               milestoneOSId: freelancer.milestoneOSId || freelancer.freelancerId,
             },
             projectTitle,
             milestoneTitle: milestone.title,
             stageNumber: stageNum,
-            aiExecutiveSummary: "Milestone deliverables inspected and certified compliant with agreed contract specifications.",
-            aiVerificationScore: 100,
-            aiAuditNotes: "All milestone criteria verified and approved by client.",
+            aiExecutiveSummary: "The client reviewed and approved the delivered work before this payment was released.",
+            aiVerificationScore: lastAuditScore,
+            aiAuditNotes: "Advisory AI review score shown where one was run; the client's approval is what released the payment.",
             criteriaCertified,
             lineItems,
             subtotal: milestone.amount,
@@ -831,16 +841,16 @@ Return strictly valid JSON:
     freelancer: {
       name: freelancer.name,
       email: freelancer.email,
-      title: freelancer.title || "Full-Stack Specialist",
+      title: freelancer.title || "Freelancer",
       freelancerId: freelancer.freelancerId || freelancer.milestoneOSId,
       milestoneOSId: freelancer.milestoneOSId || freelancer.freelancerId,
     },
     projectTitle,
     milestoneTitle: milestone.title,
     stageNumber: stageNum,
-    aiExecutiveSummary: "Milestone deliverables inspected and certified compliant with agreed contract specifications.",
-    aiVerificationScore: 100,
-    aiAuditNotes: `All ${criteriaCertified.length} acceptance criteria verified authentic and signed off. Transaction settled through MilestoneOS mutual escrow protocol.`,
+    aiExecutiveSummary: "The client reviewed and approved the delivered work before this payment was released.",
+    aiVerificationScore: lastAuditScore,
+    aiAuditNotes: "Advisory AI review score shown where one was run; the client's approval is what released the payment.",
     criteriaCertified,
     lineItems: defaultLineItems,
     subtotal: milestone.amount,
@@ -855,23 +865,31 @@ Return strictly valid JSON:
   };
 }
 
+/** Splits `total` into `parts` amounts in whole cents; the last part absorbs the remainder so they always sum exactly. */
+function splitMoney(total: number, parts: number): number[] {
+  const cents = Math.round((Number(total) || 0) * 100);
+  const base = Math.floor(cents / parts);
+  const amounts = Array.from({ length: parts }, () => base);
+  amounts[parts - 1] = cents - base * (parts - 1);
+  return amounts.map((c) => c / 100);
+}
+
 function buildDefaultLineItems(milestone: GenerateInvoiceInput["milestone"]): InvoiceLineItem[] {
   const criteria = milestone.acceptanceCriteria || [];
   if (criteria.length > 0) {
     // Keep max 3-4 items so the invoice strictly fits on 1 single page
     const maxItems = Math.min(criteria.length, 3);
     const topCriteria = criteria.slice(0, maxItems);
-    const perItem = Math.floor(milestone.amount / maxItems);
-    const remainder = milestone.amount - perItem * maxItems;
+    const split = splitMoney(milestone.amount, maxItems);
 
     return topCriteria.map((c, idx) => ({
       description: idx === maxItems - 1 && criteria.length > maxItems
         ? `${c.title} (+ ${criteria.length - maxItems} additional specifications)`
         : `${c.title} — Verified deliverable`,
-      category: "Engineering Deliverable",
+      category: "Deliverable",
       quantity: 1,
-      unitPrice: idx === maxItems - 1 ? perItem + remainder : perItem,
-      amount: idx === maxItems - 1 ? perItem + remainder : perItem,
+      unitPrice: split[idx],
+      amount: split[idx],
     }));
   }
 

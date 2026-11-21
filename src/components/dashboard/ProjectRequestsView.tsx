@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrency } from "@/lib/dashboard-data";
+
 import { useState } from "react";
 import { useDashboard } from "@/lib/dashboard-store";
 import { ProjectContract, getFriendlyProjectStatus, extractBaseCode } from "@/lib/dashboard-data";
@@ -40,10 +42,11 @@ export default function ProjectRequestsView({
   const [selectedShareProject, setSelectedShareProject] = useState<ProjectContract | null>(null);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
-  const myId = authUser?.id || "253b60b8-a9e0-4d3d-96af-618f78c1bf80";
-  const myEmail = (authUser?.email || "rohan.verma@craftdev.io").trim().toLowerCase();
-  const myMsoId = (authUser?.milestoneOSId || (role === "client" ? "CL-2W8L41" : "FL-2W8L41")).trim().toUpperCase();
-  const myBase = extractBaseCode(myMsoId) || authUser?.baseCode?.trim().toUpperCase() || "2W8L41";
+  // Who "I" am comes only from the signed-in account; there is no built-in fallback identity.
+  const myId = authUser?.id || "";
+  const myEmail = (authUser?.email || "").trim().toLowerCase();
+  const myMsoId = (authUser?.milestoneOSId || "").trim().toUpperCase();
+  const myBase = extractBaseCode(myMsoId) || authUser?.baseCode?.trim().toUpperCase() || "";
 
   // Incoming Requests: Strict recipient authorization
   // For Client role: proposals where client_id = authUser.id AND initiated_by = 'freelancer'
@@ -246,7 +249,7 @@ export default function ProjectRequestsView({
                         <div className="text-right shrink-0">
                           <span className="text-[10px] uppercase font-bold text-slate-400 block">Proposed Budget</span>
                           <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
-                            ${project.totalBudget.toLocaleString()} USD
+                            {formatCurrency(project.totalBudget, project.currency)}
                           </span>
                         </div>
                       </div>
@@ -349,7 +352,7 @@ export default function ProjectRequestsView({
                         <div className="text-right shrink-0">
                           <span className="text-[10px] uppercase font-bold text-slate-400 block">Proposed Budget</span>
                           <span className="font-mono font-bold text-sm text-slate-900 dark:text-white">
-                            ${project.totalBudget.toLocaleString()} USD
+                            {formatCurrency(project.totalBudget, project.currency)}
                           </span>
                         </div>
                       </div>

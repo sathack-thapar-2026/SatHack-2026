@@ -1,5 +1,7 @@
 "use client";
 
+import { sumByCurrency, formatCurrencyTotals } from "@/lib/dashboard-data";
+
 import { useState } from "react";
 import { useDashboard } from "@/lib/dashboard-store";
 import { Milestone, ProjectContract, ActivityItem, getFriendlyStatus, isProjectCompleted, isProjectAccepted, formatCurrency } from "@/lib/dashboard-data";
@@ -155,8 +157,10 @@ function getActivityMeta(act: EnrichedActivity) {
 
 function extractReceiptCode(text?: string): string | null {
   if (!text) return null;
-  const match = text.match(/PAYID-[A-Za-z0-9\-]+/i) || text.match(/Receipt:\s*([A-Za-z0-9\-_]+)/i);
-  return match ? match[1] || match[0] : null;
+  const labelled = text.match(/(?:Transaction:|Receipt:|Payment Capture)\s*([A-Za-z0-9\-_]{6,})/i);
+  if (labelled) return labelled[1];
+  const legacy = text.match(/PAYID-[A-Za-z0-9\-]+/i);
+  return legacy ? legacy[0] : null;
 }
 
 function extractMilestoneTitle(act: EnrichedActivity): string | null {
@@ -200,9 +204,19 @@ export default function DashboardOverview({
   const paymentsDue = allMilestones.filter(
     (item) => item.milestone.status === "approved" || item.milestone.status === "payment_pending"
   );
-  const paymentsDueTotal = paymentsDue.reduce((sum, item) => sum + item.milestone.amount, 0);
+  // Totals are kept per currency (USD + INR are never added together).
+  const paymentsDueTotal = formatCurrencyTotals(
+    sumByCurrency(
+      paymentsDue.map((item) => ({
+        amount: item.milestone.amount,
+        currency: item.milestone.currency || item.project.currency,
+      }))
+    )
+  );
 
-  const totalPaid = projects.reduce((sum, p) => sum + p.totalPaid, 0);
+  const totalPaid = formatCurrencyTotals(
+    sumByCurrency(projects.map((p) => ({ amount: p.totalPaid, currency: p.currency })))
+  );
 
   // Dedicated proposals requiring user action
   const incomingProposals = projects.filter((p) => {
@@ -699,7 +713,7 @@ export default function DashboardOverview({
             </div>
           </div>
           <div className="text-2xl font-black text-slate-900 dark:text-white font-mono mt-1">
-            ${paymentsDueTotal.toLocaleString()}
+            {paymentsDueTotal}
           </div>
           <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
             <span>
@@ -733,7 +747,7 @@ export default function DashboardOverview({
             </div>
           </div>
           <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-1">
-            ${totalPaid.toLocaleString()}
+            {totalPaid}
           </div>
           <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 mt-1">
             <span>Through Secure Payments</span>
@@ -1134,11 +1148,12 @@ export default function DashboardOverview({
                             <button
                               type="button"
                               onClick={() => {
-                                const project =
-                                  projects.find((p) => p.id === act.projectId) || projects[0];
-                                const milestone =
-                                  project?.milestones.find((m) => m.title === milestoneName) ||
-                                  project?.milestones[0];
+                                // Open the invoice for the exact project and paid milestone named in this event
+                                // (never "the first project/milestone" when it cannot be found).
+                                const project = projects.find((p) => p.id === act.projectId);
+                                const milestone = project?.milestones.find(
+                                  (m) => m.status === "paid" && (m.transactionId === receiptCode || m.title === milestoneName)
+                                );
                                 if (project && milestone) {
                                   onOpenInvoice(project, milestone, receiptCode);
                                 }

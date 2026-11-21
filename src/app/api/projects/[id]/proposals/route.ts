@@ -9,6 +9,7 @@ import {
 import { DomainError, errorResponse, readJson } from "@/server/errors";
 import { resolveCounterpartyIdentity } from "@/server/identity";
 import { newId } from "@/server/ids";
+import { normalizeCurrency, PROJECT_CURRENCIES, roundMoney } from "@/lib/dashboard-data";
 import type { ActivityItem, Milestone, ProjectContract } from "@/lib/dashboard-data";
 
 function cleanText(value: unknown, max: number, fallback = ""): string {
@@ -30,15 +31,14 @@ function sanitizeMilestones(raw: unknown, projectId: string, fallbackCurrency: s
     if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000_000) {
       throw new DomainError(400, "Milestone amounts must be valid, non-negative numbers.");
     }
-    const currencyRaw = cleanText(m?.currency, 3, fallbackCurrency).toUpperCase();
     const criteria: any[] = Array.isArray(m?.acceptanceCriteria) ? m.acceptanceCriteria.slice(0, 25) : [];
     return {
       id: cleanId(m?.id, `m_${projectId}_${idx + 1}`),
       stageNumber: idx + 1,
       title: cleanText(m?.title, 200) || `Milestone ${idx + 1}`,
       description: cleanText(m?.description, 2000),
-      amount: Math.round(amount * 100) / 100,
-      currency: /^[A-Z]{3}$/.test(currencyRaw) ? currencyRaw : fallbackCurrency,
+      amount: roundMoney(amount),
+      currency: fallbackCurrency, // always the project's currency
       dueDate: cleanText(m?.dueDate, 100, "TBD") || "TBD",
       status: "not_started" as const,
       acceptanceCriteria: criteria.map((c: any, cIdx: number) => ({
@@ -163,8 +163,10 @@ export async function POST(
       }
 
       const data = body.updatedData && typeof body.updatedData === "object" ? body.updatedData : {};
-      const currencyRaw = cleanText(data.currency, 3, project.currency).toUpperCase();
-      const currency = /^[A-Z]{3}$/.test(currencyRaw) ? currencyRaw : project.currency;
+      const currency = normalizeCurrency(typeof data.currency === "string" && data.currency.trim() ? data.currency : project.currency);
+      if (!PROJECT_CURRENCIES.includes(currency)) {
+        throw new DomainError(400, `Unsupported currency "${currency}". Use one of: ${PROJECT_CURRENCIES.join(", ")}.`);
+      }
 
       const updates: Partial<ProjectContract> = {
         status: "awaiting_acceptance",
@@ -183,7 +185,7 @@ export async function POST(
       if (Array.isArray(data.milestones)) {
         const milestones = sanitizeMilestones(data.milestones, project.id, currency);
         updates.milestones = milestones;
-        updates.totalBudget = Math.round(milestones.reduce((s, m) => s + m.amount, 0) * 100) / 100;
+        updates.totalBudget = roundMoney(milestones.reduce((s, m) => s + m.amount, 0));
       }
 
       // The recipient may be changed while revising, but only to another registered account.

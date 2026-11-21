@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrency } from "@/lib/dashboard-data";
+
 import { useState, useRef } from "react";
 import {
   X,
@@ -249,7 +251,7 @@ export default function SubmissionModal({
               {isRevision ? "Resubmit Deliverables" : "Submit Deliverables"}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Stage 0{milestone.stageNumber}: {milestone.title} • ${milestone.amount.toLocaleString()} USD
+              Stage 0{milestone.stageNumber}: {milestone.title} • {formatCurrency(milestone.amount, milestone.currency)}
             </p>
           </div>
 

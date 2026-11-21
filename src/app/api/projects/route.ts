@@ -5,6 +5,9 @@ import {
   ActivityItem,
   formatClientId,
   formatFreelancerId,
+  normalizeCurrency,
+  PROJECT_CURRENCIES,
+  roundMoney,
 } from "@/lib/dashboard-data";
 import { resolveCounterpartyIdentity } from "@/server/identity";
 import { requireCaller } from "@/server/auth";
@@ -73,8 +76,11 @@ export async function POST(req: NextRequest) {
     const asDraft = body.asDraft === true;
     const isPublicInvitation = body.isPublicInvitation === true;
 
-    const currencyRaw = cleanText(body.currency, 3, "USD").toUpperCase();
-    const currency = /^[A-Z]{3}$/.test(currencyRaw) ? currencyRaw : "USD";
+    // One currency per project: every milestone is priced in it, so totals and payments can never mix currencies.
+    const currency = normalizeCurrency(typeof body.currency === "string" && body.currency.trim() ? body.currency : "USD");
+    if (!PROJECT_CURRENCIES.includes(currency)) {
+      throw new DomainError(400, `Unsupported currency "${currency}". Use one of: ${PROJECT_CURRENCIES.join(", ")}.`);
+    }
 
     const rawMilestones: any[] = Array.isArray(body.milestones) ? body.milestones : [];
     if (rawMilestones.length > MAX_MILESTONES) {
@@ -84,14 +90,13 @@ export async function POST(req: NextRequest) {
     const projectId = newId("proj");
     const milestones = rawMilestones.map((m: any, idx: number) => {
       const criteria: any[] = Array.isArray(m?.acceptanceCriteria) ? m.acceptanceCriteria.slice(0, MAX_CRITERIA) : [];
-      const mCurrencyRaw = cleanText(m?.currency, 3, currency).toUpperCase();
       return {
         id: `m_${projectId}_${idx + 1}`,
         stageNumber: idx + 1,
         title: cleanText(m?.title, 200) || `Milestone ${idx + 1}`,
         description: cleanText(m?.description, 2000),
         amount: parseAmount(m?.amount ?? 0),
-        currency: /^[A-Z]{3}$/.test(mCurrencyRaw) ? mCurrencyRaw : currency,
+        currency,
         dueDate: cleanText(m?.dueDate, 100, "TBD") || "TBD",
         status: "not_started" as const,
         acceptanceCriteria: criteria.map((c: any, cIdx: number) => ({
@@ -107,7 +112,7 @@ export async function POST(req: NextRequest) {
         submissions: [],
       };
     });
-    const totalBudget = Math.round(milestones.reduce((sum, m) => sum + m.amount, 0) * 100) / 100;
+    const totalBudget = roundMoney(milestones.reduce((sum, m) => sum + m.amount, 0));
 
     // --- The proposer is ALWAYS the verified caller; their details come from their profile. ---
     const callerClientId = formatClientId(caller.baseCode);

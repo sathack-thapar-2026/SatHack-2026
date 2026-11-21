@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrency } from "@/lib/dashboard-data";
+
 import { ProjectContract, Milestone } from "@/lib/dashboard-data";
 import {
   X,
@@ -79,7 +81,7 @@ export default function CompletedProjectModal({
                 Total Settled
               </span>
               <span className="font-mono text-lg font-black text-emerald-700 dark:text-emerald-300">
-                ${project.totalPaid.toLocaleString()} USD
+                {formatCurrency(project.totalPaid, project.currency)}
               </span>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block mt-0.5">
                 100% Fully Settled
@@ -195,7 +197,7 @@ export default function CompletedProjectModal({
                 <span>Payment Details & Milestone Receipts ({project.milestones.length})</span>
               </h3>
               <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                ${project.totalPaid.toLocaleString()} USD Total Paid
+                {formatCurrency(project.totalPaid, project.currency)} Total Paid
               </span>
             </div>
 
@@ -223,13 +225,13 @@ export default function CompletedProjectModal({
                           </span>
                         </td>
                         <td className="p-3 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                          ${m.amount.toLocaleString()} USD
+                          {formatCurrency(m.amount, m.currency || project.currency)}
                         </td>
                         <td className="p-3 text-slate-500 whitespace-nowrap">
                           {m.paidAt || m.dueDate}
                         </td>
                         <td className="p-3 font-mono text-[11px] font-medium text-[#0070BA] dark:text-sky-400 whitespace-nowrap">
-                          {m.transactionId || "PAYID-SBX-COMPLETED"}
+                          {m.transactionId || "—"}
                         </td>
                         <td className="p-3 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-2">

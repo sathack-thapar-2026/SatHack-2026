@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrency } from "@/lib/dashboard-data";
+
 import { useState, useEffect, use, Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -243,7 +245,7 @@ function InvitePageContent({ params }: InvitePageProps) {
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/10">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Budget</span>
               <span className="font-mono font-black text-lg text-slate-900 dark:text-white">
-                ${project.totalBudget.toLocaleString()} USD
+                {formatCurrency(project.totalBudget, project.currency)}
               </span>
             </div>
 
@@ -289,7 +291,7 @@ function InvitePageContent({ params }: InvitePageProps) {
                       Stage 0{m.stageNumber}: {m.title}
                     </span>
                     <span className="font-mono font-bold text-slate-900 dark:text-white text-xs">
-                      ${m.amount.toLocaleString()} USD
+                      {formatCurrency(m.amount, m.currency || project.currency)}
                     </span>
                   </div>
 

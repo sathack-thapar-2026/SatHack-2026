@@ -1,5 +1,7 @@
 "use client";
 
+import { getCurrencySymbol, roundMoney } from "@/lib/dashboard-data";
+
 import { useState, useEffect, useRef } from "react";
 import { authFetch } from "@/lib/api-client";
 import {
@@ -70,6 +72,21 @@ interface InvoiceData {
  * Builds a pristine, 100% plain white corporate invoice HTML document.
  * Strictly 1 Page layout, no backgrounds, no web threads, no canvases, no gradients.
  */
+/** 1250.5 -> "$1,250.50" in the invoice's own currency symbol. */
+function money(amount: number, currency?: string): string {
+  return `${getCurrencySymbol(currency)}${Number(amount || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/** Small stable hash so a regenerated invoice always gets the same number/fingerprint. */
+function shortHash(input: string): string {
+  let h = 5381;
+  for (let i = 0; i < input.length; i++) h = ((h << 5) + h + input.charCodeAt(i)) | 0;
+  return Math.abs(h).toString(16).toUpperCase().padStart(8, "0");
+}
+
 /** Escapes text before it is placed into the invoice HTML (names/titles are user-controlled). */
 function esc(value: unknown): string {
   return String(value ?? "")
@@ -81,7 +98,7 @@ function esc(value: unknown): string {
 }
 
 function buildCleanInvoiceHtml(invoice: InvoiceData): string {
-  const sym = (invoice.currency || "USD").toUpperCase() === "INR" ? "₹" : "$";
+  const sym = getCurrencySymbol(invoice.currency);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -411,7 +428,7 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
             (item) => `<tr>
           <td><strong>${esc(item.description)}</strong></td>
           <td style="color: #64748B;">${esc(item.category)}</td>
-          <td class="td-num">${sym}${item.amount.toLocaleString()}.00 ${esc(invoice.currency)}</td>
+          <td class="td-num">${esc(money(item.amount, invoice.currency))} ${esc(invoice.currency)}</td>
         </tr>`
           )
           .join("")}
@@ -427,10 +444,10 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
       </div>
 
       <div class="totals-box">
-        <div class="total-row"><span>Milestone Subtotal:</span> <span class="mono">${sym}${invoice.subtotal.toLocaleString()}.00</span></div>
-        <div class="total-row"><span>Escrow Released:</span> <span class="mono">-${sym}${invoice.escrowReleased.toLocaleString()}.00</span></div>
-        <div class="total-row"><span>Platform Fee:</span> <span class="mono">${sym}0.00</span></div>
-        <div class="total-row total-final"><span>Total Paid:</span> <span class="mono">${sym}${invoice.total.toLocaleString()}.00 ${esc(invoice.currency)}</span></div>
+        <div class="total-row"><span>Milestone Subtotal:</span> <span class="mono">${esc(money(invoice.subtotal, invoice.currency))}</span></div>
+        <div class="total-row"><span>Escrow Released:</span> <span class="mono">-${esc(money(invoice.escrowReleased, invoice.currency))}</span></div>
+        <div class="total-row"><span>Platform Fee:</span> <span class="mono">${esc(sym)}0.00</span></div>
+        <div class="total-row total-final"><span>Total Paid:</span> <span class="mono">${esc(money(invoice.total, invoice.currency))} ${esc(invoice.currency)}</span></div>
       </div>
     </div>
 
@@ -464,19 +481,19 @@ export default function InvoiceModal({
     let isCancelled = false;
 
     // Resolve unified Client and Freelancer IDs
-    const clientBase = extractBaseCode(
-      project.client.milestoneOSId || project.clientId || "Q7EWTG"
-    );
+    const clientBase = extractBaseCode(project.client.milestoneOSId);
     const resolvedClientId = project.client.milestoneOSId?.startsWith("CL-")
       ? project.client.milestoneOSId
-      : formatClientId(clientBase);
+      : clientBase
+      ? formatClientId(clientBase)
+      : "";
 
-    const freelancerBase = extractBaseCode(
-      project.freelancer.milestoneOSId || project.freelancerId || "Q7EWTG"
-    );
+    const freelancerBase = extractBaseCode(project.freelancer.milestoneOSId);
     const resolvedFreelancerId = project.freelancer.milestoneOSId?.startsWith("FL-")
       ? project.freelancer.milestoneOSId
-      : formatFreelancerId(freelancerBase);
+      : freelancerBase
+      ? formatFreelancerId(freelancerBase)
+      : "";
 
     async function fetchInvoice() {
       setLoading(true);
@@ -519,8 +536,9 @@ export default function InvoiceModal({
         const criteria = milestone.acceptanceCriteria || [];
         const maxItems = Math.min(Math.max(criteria.length, 1), 3);
         const topCriteria = criteria.slice(0, maxItems);
-        const perItem = Math.floor(milestone.amount / maxItems);
-        const remainder = milestone.amount - perItem * maxItems;
+        // Split in whole cents; the last line absorbs any rounding remainder so lines always add up.
+        const perItem = Math.floor((milestone.amount * 100) / maxItems) / 100;
+        const lastItem = roundMoney(milestone.amount - perItem * (maxItems - 1));
 
         const lineItems =
           topCriteria.length > 0
@@ -529,15 +547,15 @@ export default function InvoiceModal({
                   i === maxItems - 1 && criteria.length > maxItems
                     ? `${c.title} (+ ${criteria.length - maxItems} additional specifications)`
                     : `${c.title} — Verified deliverable`,
-                category: "Engineering Deliverable",
+                category: "Deliverable",
                 quantity: 1,
-                unitPrice: i === maxItems - 1 ? perItem + remainder : perItem,
-                amount: i === maxItems - 1 ? perItem + remainder : perItem,
+                unitPrice: i === maxItems - 1 ? lastItem : perItem,
+                amount: i === maxItems - 1 ? lastItem : perItem,
               }))
             : [
                 {
                   description: `${milestone.title} — Milestone Stage Deliverables`,
-                  category: "Engineering Deliverable",
+                  category: "Deliverable",
                   quantity: 1,
                   unitPrice: milestone.amount,
                   amount: milestone.amount,
@@ -545,13 +563,18 @@ export default function InvoiceModal({
               ];
 
         setInvoice({
-          invoiceNumber: `INV-2026-MS0${milestone.stageNumber || 1}-9142`,
+          invoiceNumber: `INV-${
+            (() => {
+              const d = new Date((milestone.paidAt || "").split("•")[0].trim());
+              return Number.isNaN(d.getTime()) ? new Date().getFullYear() : d.getFullYear();
+            })()
+          }-MS0${milestone.stageNumber || 1}-${shortHash(`${project.id}${milestone.id}`).slice(0, 4)}`,
           issueDate: milestone.paidAt?.split("•")[0]?.trim() || milestone.paidAt || "N/A",
           paymentDate: milestone.paidAt || "N/A",
           dueDate: milestone.dueDate || "Completed",
           status: "PAID",
           transactionId: tx,
-          paymentMethod: "Verified Escrow Settlement",
+          paymentMethod: "Secure Milestone Settlement",
           client: {
             name: project.client.name,
             email: project.client.email,
@@ -561,7 +584,7 @@ export default function InvoiceModal({
           freelancer: {
             name: project.freelancer.name,
             email: project.freelancer.email,
-            title: project.freelancer.title || "Full-Stack Specialist",
+            title: project.freelancer.title || "Freelancer",
             freelancerId: resolvedFreelancerId,
           },
           projectTitle: project.title,
@@ -573,7 +596,7 @@ export default function InvoiceModal({
           escrowReleased: milestone.amount,
           total: milestone.amount,
           currency: milestone.currency || "USD",
-          cryptographicHash: `0x8f4c${Date.now().toString(16).slice(-6)}f92a`,
+          cryptographicHash: `0x${shortHash(`${project.id}${milestone.id}${tx}`)}`,
           disclaimer:
             "This official settlement invoice certifies mutual milestone completion and settlement release via MilestoneOS.",
         });
@@ -632,7 +655,6 @@ export default function InvoiceModal({
 
   const handleCopySummary = () => {
     if (!invoice) return;
-    const sym = (invoice.currency || "USD").toUpperCase() === "INR" ? "₹" : "$";
     const summary = `Official Invoice
 Invoice Number: ${invoice.invoiceNumber}
 Status: ${invoice.status} via Escrow
@@ -641,7 +663,7 @@ Payment Date: ${invoice.paymentDate}
 
 Project: ${invoice.projectTitle}
 Milestone: Stage 0${invoice.stageNumber} — ${invoice.milestoneTitle}
-Total Paid: ${sym}${invoice.total.toLocaleString()}.00 ${invoice.currency}
+Total Paid: ${money(invoice.total, invoice.currency)} ${invoice.currency}
 
 Billed To (Client): ${invoice.client.name} (${invoice.client.company}) | ID: ${invoice.client.clientId || "N/A"}
 Issued By (Freelancer): ${invoice.freelancer.name} (${invoice.freelancer.title}) | ID: ${invoice.freelancer.freelancerId || "N/A"}
@@ -867,7 +889,7 @@ Settled securely via MilestoneOS Mutual Escrow.`;
                             {item.category}
                           </td>
                           <td className="py-2.5 px-3 font-mono font-bold text-slate-900 text-right whitespace-nowrap">
-                            {((invoice.currency || "USD").toUpperCase() === "INR" ? "₹" : "$")}{item.amount.toLocaleString()}.00 {invoice.currency}
+                            {money(item.amount, invoice.currency)} {invoice.currency}
                           </td>
                         </tr>
                       ))}
@@ -910,23 +932,23 @@ Settled securely via MilestoneOS Mutual Escrow.`;
                     <div className="flex justify-between text-slate-600">
                       <span>Milestone Subtotal:</span>
                       <span className="font-mono font-semibold text-slate-900">
-                        {((invoice.currency || "USD").toUpperCase() === "INR" ? "₹" : "$")}{invoice.subtotal.toLocaleString()}.00 {invoice.currency}
+                        {money(invoice.subtotal, invoice.currency)} {invoice.currency}
                       </span>
                     </div>
                     <div className="flex justify-between text-slate-600">
                       <span>Escrow Released:</span>
                       <span className="font-mono font-semibold text-emerald-700">
-                        -{((invoice.currency || "USD").toUpperCase() === "INR" ? "₹" : "$")}{invoice.escrowReleased.toLocaleString()}.00
+                        -{money(invoice.escrowReleased, invoice.currency)}
                       </span>
                     </div>
                     <div className="flex justify-between text-slate-600">
                       <span>Platform Fee:</span>
-                      <span className="font-mono font-semibold text-slate-900">{((invoice.currency || "USD").toUpperCase() === "INR" ? "₹" : "$")}0.00</span>
+                      <span className="font-mono font-semibold text-slate-900">{money(0, invoice.currency)}</span>
                     </div>
                     <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-black text-slate-900">
                       <span>Total Paid:</span>
                       <span className="font-mono font-black text-emerald-700">
-                        {((invoice.currency || "USD").toUpperCase() === "INR" ? "₹" : "$")}{invoice.total.toLocaleString()}.00 {invoice.currency}
+                        {money(invoice.total, invoice.currency)} {invoice.currency}
                       </span>
                     </div>
                   </div>
