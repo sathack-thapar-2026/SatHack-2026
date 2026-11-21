@@ -21,15 +21,15 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "PayZorr — Payments Made Effortless | Verified Milestones & Safe Payouts",
+  title: "PerMile — Payments Made Effortless | Verified Milestones & Safe Payouts",
   description:
-    "PayZorr: Work completed. Progress verified. Payments made with confidence. Payments Made Effortless for freelancers and clients.",
+    "PerMile: Work completed. Progress verified. Payments made with confidence. Payments Made Effortless for freelancers and clients.",
   icons: {
-    icon: "/payzorr-icon.png",
-    apple: "/payzorr-icon.png",
+    icon: "/permile-icon.png",
+    apple: "/permile-icon.png",
   },
   keywords: [
-    "PayZorr",
+    "PerMile",
     "Milestone Payments",
     "Freelance Payment Protection",
     "AI Project Verification",
@@ -50,7 +50,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                var theme = localStorage.getItem('payzorr-theme') || localStorage.getItem('milestoneos-theme');
+                var theme = localStorage.getItem('permile-theme') || localStorage.getItem('payzorr-theme') || localStorage.getItem('milestoneos-theme');
                 if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                   document.documentElement.classList.add('dark');
                 } else {

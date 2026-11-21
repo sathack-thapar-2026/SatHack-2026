@@ -308,7 +308,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
     }
 
     if (!baseCode || baseCode.length !== 6 || !/^[A-Z0-9]{6}$/.test(baseCode)) {
-      setLookupError("Invalid ID format. Valid PayZorr IDs consist of a role prefix ('CL-' or 'FL-') followed by a 6-character alphanumeric code.");
+      setLookupError("Invalid ID format. Valid PerMile IDs consist of a role prefix ('CL-' or 'FL-') followed by a 6-character alphanumeric code.");
       setSelectedUser(null);
       return;
     }
@@ -409,10 +409,10 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
     }
 
     if (method === "user_id" && !selectedUser && !initialProject) {
-      setFormError("Please search for and confirm the counterparty by their PayZorr ID, or select 'Create & Share Proposal Link'.");
+      setFormError("Please search for and confirm the counterparty by their PerMile ID, or select 'Create & Share Proposal Link'.");
       showAlert({
         title: "Counterparty Required",
-        message: "Please enter a valid PayZorr ID for the other party, or switch to 'Create & Share Proposal Link'.",
+        message: "Please enter a valid PerMile ID for the other party, or switch to 'Create & Share Proposal Link'.",
         type: "warning",
       });
       return;
@@ -674,7 +674,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                       Choose How to Connect with the Other Party:
                     </label>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      PayZorr connects independent parties who already know each other. Select your preferred initiation method.
+                      PerMile connects independent parties who already know each other. Select your preferred initiation method.
                     </p>
                   </div>
 
@@ -706,7 +706,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                         )}
                       </div>
                       <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-                        Enter the other person's PayZorr ID to verify their account and send the proposal directly.
+                        Enter the other person's PerMile ID to verify their account and send the proposal directly.
                       </p>
                     </button>
 
@@ -799,7 +799,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                       {registeredCounterparties.length > 0 && (
                         <div className="pt-2">
                           <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider block mb-1.5">
-                            Registered {isClient ? "Freelancers" : "Clients"} on PayZorr:
+                            Registered {isClient ? "Freelancers" : "Clients"} on PerMile:
                           </span>
                           <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
                             {registeredCounterparties.map((u) => {
@@ -881,7 +881,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                   </p>
                   <div className="pt-1 flex items-center gap-1.5 text-[10px] text-slate-500 font-semibold">
                     <ShieldCheck className="h-3 w-3 text-emerald-500" />
-                    <span>Recipient must authenticate on PayZorr to review and accept the agreement.</span>
+                    <span>Recipient must authenticate on PerMile to review and accept the agreement.</span>
                   </div>
                 </div>
               )}

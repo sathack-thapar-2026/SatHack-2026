@@ -1,5 +1,5 @@
 /**
- * PayZorr — Server-side authentication & authorization helpers.
+ * PerMile — Server-side authentication & authorization helpers.
  *
  * The caller's identity is ONLY ever taken from a Supabase access token
  * (Authorization: Bearer <jwt>) that the server verifies itself.

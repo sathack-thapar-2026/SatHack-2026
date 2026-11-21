@@ -209,7 +209,7 @@ function DashboardInner() {
             </div>
             <div className="flex-1">
               <span className="font-bold block text-slate-900 dark:text-white">
-                PayZorr Update
+                PerMile Update
               </span>
               <p className="mt-0.5 text-slate-600 dark:text-slate-300 leading-snug">
                 {toast.message}
@@ -521,7 +521,7 @@ export default function DashboardPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-[#F8FAFD] dark:bg-[#070B14] text-slate-500 text-xs font-mono">
-          Loading PayZorr...
+          Loading PerMile...
         </div>
       }
     >

@@ -1,5 +1,5 @@
 /**
- * PayZorr — Server-Side Supabase Client
+ * PerMile — Server-Side Supabase Client
  * Uses the Service Role Key (or Anon Key) for secure backend operations.
  */
 

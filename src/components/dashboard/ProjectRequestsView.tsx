@@ -203,7 +203,7 @@ export default function ProjectRequestsView({
                 No Incoming Project Requests
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-                When a client or freelancer initiates a project proposal with your PayZorr ID, or when you open an invitation link, it will appear here for review and acceptance.
+                When a client or freelancer initiates a project proposal with your PerMile ID, or when you open an invitation link, it will appear here for review and acceptance.
               </p>
             </div>
           ) : (
@@ -299,7 +299,7 @@ export default function ProjectRequestsView({
                 No Sent Proposals Yet
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-                You can create a project proposal for a specific person using their PayZorr ID, or generate a private invitation link to share via WhatsApp, email, or message.
+                You can create a project proposal for a specific person using their PerMile ID, or generate a private invitation link to share via WhatsApp, email, or message.
               </p>
               <button
                 type="button"

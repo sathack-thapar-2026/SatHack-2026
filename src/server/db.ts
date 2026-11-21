@@ -1,5 +1,5 @@
 /**
- * PayZorr — Server-Side Multi-User Database & Ledger Store
+ * PerMile — Server-Side Multi-User Database & Ledger Store
  * Single Source of Truth: Supabase PostgreSQL
  *
  * Design notes

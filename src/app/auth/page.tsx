@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
-import PayZorrLogo from "@/components/PayZorrLogo";
+import PermileLogo from "@/components/PermileLogo";
 import {
   Eye,
   EyeOff,
@@ -848,7 +848,7 @@ export default function AuthPage() {
             className="flex items-center justify-between"
           >
             <div className="flex items-center gap-4">
-              <PayZorrLogo variant="compact" size="md" href="/" />
+              <PermileLogo variant="compact" size="md" href="/" />
               <Link
                 href="/"
                 className="inline-flex items-center gap-2 text-xs font-bold text-[#142D46] dark:text-white px-3.5 py-2 rounded-xl bg-white/75 dark:bg-white/10 border border-white/85 dark:border-white/15 backdrop-blur-md shadow-2xs hover:bg-white dark:hover:bg-white/15 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"

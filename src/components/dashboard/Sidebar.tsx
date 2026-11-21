@@ -5,7 +5,7 @@ import { formatCurrency } from "@/lib/dashboard-data";
 import Link from "next/link";
 import { useDashboard, DashboardTab } from "@/lib/dashboard-store";
 import ThemeToggle from "@/components/ThemeToggle";
-import PayZorrLogo from "@/components/PayZorrLogo";
+import PermileLogo from "@/components/PermileLogo";
 import EditProfileModal from "./EditProfileModal";
 import {
   LayoutDashboard,
@@ -189,7 +189,7 @@ export default function Sidebar({
         <div className="p-4 flex-1 flex flex-col overflow-y-auto">
           {/* Logo */}
           <div className="flex items-center justify-between pb-4 border-b border-slate-200/60 dark:border-white/10">
-            <PayZorrLogo variant="compact" size="md" href="/" />
+            <PermileLogo variant="compact" size="md" href="/" />
 
             <button
               type="button"
@@ -378,7 +378,7 @@ export default function Sidebar({
 
         {/* Bottom Profile & Actions */}
         <div className="p-3 border-t border-slate-200/80 dark:border-white/10 bg-slate-50/50 dark:bg-black/20">
-          {/* Active User Card with PayZorr ID */}
+          {/* Active User Card with PerMile ID */}
           <div className="p-2.5 rounded-xl bg-white dark:bg-[#0D1527] border border-slate-200/80 dark:border-white/10 shadow-2xs mb-2.5 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <button

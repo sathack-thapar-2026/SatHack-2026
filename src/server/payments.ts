@@ -1,5 +1,5 @@
 /**
- * PayZorr — Payment Gateway Server Client
+ * PerMile — Payment Gateway Server Client
  * Orders v2 REST integration for server-side order creation, inspection and capture.
  * Gateway error bodies are logged server-side only; callers receive generic messages.
  */
@@ -137,7 +137,7 @@ export async function createPaymentOrder(params: CreateOrderParams): Promise<Pay
     .replace(/[^\x20-\x7E]/g, "")
     .trim()
     .slice(0, 90);
-  const cleanDescription = `PayZorr: ${cleanTitle}`
+  const cleanDescription = `PerMile: ${cleanTitle}`
     .replace(/[^\x20-\x7E]/g, "")
     .trim()
     .slice(0, 127);
@@ -157,7 +157,7 @@ export async function createPaymentOrder(params: CreateOrderParams): Promise<Pay
       },
     ],
     application_context: {
-      brand_name: "PayZorr",
+      brand_name: "PerMile",
       landing_page: "NO_PREFERENCE",
       shipping_preference: "NO_SHIPPING",
       user_action: "PAY_NOW",

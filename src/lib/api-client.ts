@@ -1,5 +1,5 @@
 /**
- * PayZorr — authenticated fetch for the app's own API routes.
+ * PerMile — authenticated fetch for the app's own API routes.
  *
  * Every protected route verifies the caller's Supabase access token on the server,
  * so every request from the browser must carry it. Identity is never sent in the body.

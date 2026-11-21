@@ -184,7 +184,7 @@ function InvitePageContent({ params }: InvitePageProps) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#0070BA]/10 text-[#0070BA] dark:bg-sky-950/60 dark:text-sky-300 border border-[#0070BA]/20">
               <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Private PayZorr Agreement Proposal</span>
+              <span>Private PerMile Agreement Proposal</span>
             </span>
 
             <span className="text-xs text-slate-500 font-mono">
@@ -371,7 +371,9 @@ export default function InvitePage(props: InvitePageProps) {
         </div>
       }
     >
-      <InvitePageContent params={props.params} />
+      <DashboardProvider>
+        <InvitePageContent params={props.params} />
+      </DashboardProvider>
     </Suspense>
     </DashboardProvider>
   );

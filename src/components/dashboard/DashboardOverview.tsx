@@ -409,7 +409,7 @@ export default function DashboardOverview({
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               {role === "client"
                 ? "Create your first project to define custom milestone acceptance criteria, invite a freelancer, and fund escrow with Secure Payments."
-                : "Accept a client invitation link or share your permanent PayZorr ID with a client to receive milestone proposals."}
+                : "Accept a client invitation link or share your permanent PerMile ID with a client to receive milestone proposals."}
             </p>
           </div>
           <div className="pt-2 flex items-center justify-center gap-3">
@@ -482,7 +482,7 @@ export default function DashboardOverview({
                         </div>
                         {proposer.milestoneOSId && (
                           <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                            PayZorr ID: <strong className="text-slate-800 dark:text-slate-200">{proposer.milestoneOSId}</strong>
+                            PerMile ID: <strong className="text-slate-800 dark:text-slate-200">{proposer.milestoneOSId}</strong>
                           </span>
                         )}
                       </div>

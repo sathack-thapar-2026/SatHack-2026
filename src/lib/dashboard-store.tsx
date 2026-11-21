@@ -1791,7 +1791,7 @@ export function DashboardProvider({
               {
                 id: `act_completed_${Date.now()}`,
                 timestamp: "Just now",
-                actor: "PayZorr",
+                actor: "PerMile",
                 actorRole: "payment",
                 action: `Project "${project.title}" completed! All ${updatedMilestones.length} milestones paid and fully settled.`,
                 details: `100% of milestones completed. Total payout: ${formatCurrency(roundMoney(project.totalPaid + paidAmount), project.currency)}.`,

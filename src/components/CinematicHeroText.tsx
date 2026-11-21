@@ -87,7 +87,7 @@ export default function CinematicHeroText() {
       >
         <span className="h-2 w-2 rounded-full bg-[#0284C7] dark:bg-[#58C7E8] animate-pulse" />
         <span className="text-[11px] font-extrabold tracking-widest uppercase text-[#0284C7] dark:text-[#58C7E8]">
-          PAYZORR VERIFIED ESCROW
+          PERMILE VERIFIED ESCROW
         </span>
       </div>
 
@@ -120,7 +120,7 @@ export default function CinematicHeroText() {
         }}
       >
         <p>
-          PayZorr lets you pay freelancers in safe stages. Before any money moves,
+          PerMile lets you pay freelancers in safe stages. Before any money moves,
           AI checks that the work matches what was promised—so clients never get
           burned, and freelancers always get paid on time.
         </p>
