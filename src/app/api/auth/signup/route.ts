@@ -91,7 +91,10 @@ export async function POST(req: NextRequest) {
         email_confirm: true,
         user_metadata: {
           name: userName,
-          role: "both",
+          // The database trigger copies this into profiles.role, whose check constraint only allows
+          // 'client' or 'freelancer' on existing databases. Sending 'both' here makes the trigger fail
+          // ("Database error creating new user"). Dual-role access comes from `roles` and the shared base code.
+          role: "client",
           roles: userRoles,
           baseCode,
           clientId,
