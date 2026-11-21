@@ -37,7 +37,7 @@ export default function HomePage() {
             {/* Plain English Subtitle that anyone can understand */}
             <ScrollReveal direction="up" delay={420} distance={28}>
               <p className="mt-5 text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed backdrop-blur-[2px]">
-                MilestoneOS lets you pay freelancers in safe stages. Before any money moves, AI checks that the work matches what was promised—so clients never get burned, and freelancers always get paid on time.
+                PayZorr lets you pay freelancers in safe stages. Before any money moves, AI checks that the work matches what was promised—so clients never get burned, and freelancers always get paid on time.
               </p>
             </ScrollReveal>
 

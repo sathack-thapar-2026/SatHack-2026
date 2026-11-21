@@ -1,56 +1,50 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 740 460' width='740' height='460'>
-    <!-- Crisp Card Container (Light Aesthetic) -->
-    <rect width='738' height='458' x='1' y='1' rx='22' ry='22' fill='#FFFFFF' stroke='#E2E8F0' stroke-width='1.5'/>
+  <!-- Crisp Card Container (Light Aesthetic) -->
+  <rect width='738' height='458' x='1' y='1' rx='22' ry='22' fill='#FFFFFF' stroke='#E2E8F0' stroke-width='1.5'/>
 
-    <!-- Subtle Top Accent Indicator -->
-    <path d='M 22 1 L 718 1 A 22 22 0 0 1 739 22 L 739 26 L 1 26 L 1 22 A 22 22 0 0 1 22 1 Z' fill='#059669' fill-opacity='0.15'/>
-    <line x1='1' y1='26' x2='739' y2='26' stroke='#E2E8F0' stroke-width='1'/>
+  <!-- Light Blue Top Accent Indicator (Card 5 Theme) -->
+  <path d='M 22 1 L 718 1 A 22 22 0 0 1 739 22 L 739 26 L 1 26 L 1 22 A 22 22 0 0 1 22 1 Z' fill='#0891B2' fill-opacity='0.15'/>
+  <line x1='1' y1='26' x2='739' y2='26' stroke='#E2E8F0' stroke-width='1'/>
 
-    <!-- Top Stage Badges -->
-    <g transform='translate(48, 44)'>
-      <rect width='84' height='25' rx='7' fill='#ECFDF5' stroke='#A7F3D0' stroke-width='1'/>
-      <text x='11' y='16.5' fill='#059669' font-size='11' font-weight='800' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif' letter-spacing='0.5'>STAGE 03</text>
-      
-      <rect x='94' width='168' height='25' rx='7' fill='#F8FAFC' stroke='#E2E8F0' stroke-width='1'/>
-      <circle cx='107' cy='12.5' r='3.5' fill='#059669'/>
-      <text x='118' y='16.5' fill='#475569' font-size='11' font-weight='600' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>INTELLIGENT AUDIT</text>
+  <!-- Top Stage Badge (No Secondary Heading) -->
+  <g transform='translate(48, 44)'>
+    <rect width='84' height='25' rx='7' fill='#ECFEFF' stroke='#A5F3FC' stroke-width='1'/>
+    <text x='11' y='16.5' fill='#0891B2' font-size='11' font-weight='800' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif' letter-spacing='0.5'>STAGE 03</text>
+  </g>
+
+  <!-- Title & Subtitle -->
+  <text x='48' y='114' fill='#0F172A' font-size='25' font-weight='800' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif' letter-spacing='-0.3'>Automated Deliverable Verification</text>
+  <text x='48' y='142' fill='#475569' font-size='13.5' font-weight='450' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>AI objectively audits code and staging against agreed requirements before money moves.</text>
+
+  <!-- Divider -->
+  <line x1='48' y1='168' x2='692' y2='168' stroke='#F1F5F9' stroke-width='1'/>
+
+  <!-- Clean Verification Box (No Generic Bullets) -->
+  <g transform='translate(48, 186)'>
+    <rect width='644' height='162' rx='14' fill='#F8FAFC' stroke='#E2E8F0' stroke-width='1'/>
+    
+    <!-- Audit Row 1 -->
+    <g transform='translate(22, 22)'>
+      <text x='0' y='14' fill='#0F172A' font-size='14' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Contract Scope Verification</text>
+      <text x='0' y='32' fill='#64748B' font-size='12' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Cross-referencing submitted repository PR and live staging endpoints</text>
+      <rect x='488' y='6' width='114' height='24' rx='6' fill='#F0FDF4' stroke='#BBF7D0' stroke-width='1'/>
+      <text x='504' y='22' fill='#16A34A' font-size='11' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>3 of 3 Passed</text>
     </g>
 
-    <!-- Title & Subtitle -->
-    <text x='48' y='116' fill='#0F172A' font-size='25' font-weight='800' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif' letter-spacing='-0.3'>Automated Work Verification</text>
-    <text x='48' y='144' fill='#475569' font-size='13.5' font-weight='450' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Smart AI checks delivered work against contract criteria to ensure nothing was missed.</text>
+    <line x1='22' y1='76' x2='622' y2='76' stroke='#E2E8F0' stroke-width='1'/>
 
-    <!-- Divider -->
-    <line x1='48' y1='174' x2='692' y2='174' stroke='#F1F5F9' stroke-width='1'/>
-
-    <!-- 3 Checklist Items -->
-    
-      <g transform='translate(48, 208)'>
-        <rect width='28' height='28' rx='8' fill='#ECFDF5' stroke='#A7F3D0' stroke-width='1.2'/>
-        <path d='M8 14.5l3.5 3.5 8-8' fill='none' stroke='#059669' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/>
-        <text x='42' y='14' fill='#0F172A' font-size='14.5' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Objective Quality Check</text>
-        <text x='42' y='32' fill='#64748B' font-size='12' font-weight='450' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Compares finished code and assets against agreed contract goals</text>
-      </g>
-    
-      <g transform='translate(48, 264)'>
-        <rect width='28' height='28' rx='8' fill='#ECFDF5' stroke='#A7F3D0' stroke-width='1.2'/>
-        <path d='M8 14.5l3.5 3.5 8-8' fill='none' stroke='#059669' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/>
-        <text x='42' y='14' fill='#0F172A' font-size='14.5' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Missing Deliverable Detection</text>
-        <text x='42' y='32' fill='#64748B' font-size='12' font-weight='450' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Identifies omissions and alerts both sides before payment release</text>
-      </g>
-    
-      <g transform='translate(48, 320)'>
-        <rect width='28' height='28' rx='8' fill='#ECFDF5' stroke='#A7F3D0' stroke-width='1.2'/>
-        <path d='M8 14.5l3.5 3.5 8-8' fill='none' stroke='#059669' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/>
-        <text x='42' y='14' fill='#0F172A' font-size='14.5' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Plain-English Insights</text>
-        <text x='42' y='32' fill='#64748B' font-size='12' font-weight='450' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Clear, transparent summaries with zero technical jargon required</text>
-      </g>
-    
-
-    <!-- Bottom Status / Verification Pill -->
-    <g transform='translate(48, 396)'>
-      <rect width='644' height='34' rx='9' fill='#F8FAFC' stroke='#E2E8F0' stroke-width='1'/>
-      <path d='M 16 17 L 20 21 L 26 13' fill='none' stroke='#059669' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/>
-      <text x='36' y='21.5' fill='#334155' font-size='12' font-weight='600' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Objective check • Verified before any funds move</text>
+    <!-- Audit Row 2 -->
+    <g transform='translate(22, 98)'>
+      <text x='0' y='14' fill='#0F172A' font-size='14' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Objective Summary for Client</text>
+      <text x='0' y='32' fill='#64748B' font-size='12' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>All specified pages responsive with zero broken links or missing files</text>
+      <rect x='488' y='6' width='114' height='24' rx='6' fill='#ECFEFF' stroke='#A5F3FC' stroke-width='1'/>
+      <text x='506' y='22' fill='#0891B2' font-size='11' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Ready to Pay</text>
     </g>
-  </svg>
+  </g>
+
+  <!-- Bottom Summary Note -->
+  <g transform='translate(48, 382)'>
+    <rect width='644' height='36' rx='9' fill='#F0FDFA' stroke='#CCFBF1' stroke-width='1'/>
+    <text x='20' y='22.5' fill='#0F766E' font-size='12' font-weight='600' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Objective review • No technical jargon, no client blind spots</text>
+  </g>
+</svg>

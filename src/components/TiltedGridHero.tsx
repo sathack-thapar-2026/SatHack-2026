@@ -78,7 +78,7 @@ export type TiltedGridHeroProps = {
 
 export function TiltedGridHero({
   images,
-  speed = 4.5,
+  speed = 6.5,
   tileHeight = 75,
   aspectRatio = 16 / 10,
   gap = 8,
@@ -96,6 +96,20 @@ export function TiltedGridHero({
   const bend = (Math.min(85, Math.max(5, curve)) * Math.PI) / 180;
 
   const imageCount = Math.max(images.length, 1);
+
+  const [isHolding, setIsHolding] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleRelease = () => setIsHolding(false);
+    window.addEventListener("mouseup", handleRelease);
+    window.addEventListener("touchend", handleRelease);
+    window.addEventListener("touchcancel", handleRelease);
+    return () => {
+      window.removeEventListener("mouseup", handleRelease);
+      window.removeEventListener("touchend", handleRelease);
+      window.removeEventListener("touchcancel", handleRelease);
+    };
+  }, []);
 
   const [layout, setLayout] = React.useState<ReturnType<typeof measure> | null>(
     null,
@@ -149,7 +163,10 @@ export function TiltedGridHero({
     `from{transform:${turn(-sweep)}}to{transform:${turn(sweep)}}` +
     `}` +
     `@media(prefers-reduced-motion:reduce){.${tile}{animation-play-state:paused}}` +
-    `@media(hover:hover){.${tile}:hover{animation-play-state:paused}}`;
+    // When clicking and holding on any card or the ribbon, pause ALL cards together in perfect sync
+    `.is-holding .${tile}, .tgh-track:active .${tile} { animation-play-state: paused !important; }` +
+    `.${tile} { cursor: grab; user-select: none; -webkit-user-select: none; }` +
+    `.is-holding .${tile}, .${tile}:active { cursor: grabbing !important; }`;
 
   const share = aspectRatio / SLICES;
   const duration = columns * speed;
@@ -160,7 +177,7 @@ export function TiltedGridHero({
   return (
     <div
       ref={ref}
-      className={cn("relative overflow-hidden", className)}
+      className={cn("relative overflow-hidden select-none", className)}
       {...props}
       style={{ containerType: "size", ...props.style }}
     >
@@ -168,7 +185,12 @@ export function TiltedGridHero({
 
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 transition-opacity duration-500"
+        className={cn(
+          "tgh-track pointer-events-none absolute inset-0 transition-opacity duration-500",
+          isHolding && "is-holding"
+        )}
+        onMouseDown={() => setIsHolding(true)}
+        onTouchStart={() => setIsHolding(true)}
         style={{
           opacity: layout ? 1 : 0,
           perspective: `${+(r * CAMERA).toFixed(3)}cqw`,
@@ -186,7 +208,12 @@ export function TiltedGridHero({
           return (
             <div
               key={t}
-              className={cn(tile, "absolute pointer-events-auto cursor-pointer")}
+              className={cn(tile, "absolute pointer-events-auto select-none")}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsHolding(true);
+              }}
+              onTouchStart={() => setIsHolding(true)}
               style={{
                 left: `calc(50% - ${u(aspectRatio / 2)})`,
                 top: `calc(${axis}% - ${u(0.5)})`,
@@ -195,13 +222,14 @@ export function TiltedGridHero({
                 transformStyle: "preserve-3d",
                 backfaceVisibility: "hidden",
                 animation: `${orbit} ${duration}s linear ${delay}s infinite`,
+                animationPlayState: isHolding ? "paused" : "running",
               }}
             >
               {Array.from({ length: SLICES }, (_, k) => (
                 <div
                   key={k}
                   className={cn(
-                    "absolute top-0 overflow-hidden bg-white dark:bg-[#131B2E]",
+                    "absolute top-0 overflow-hidden bg-white dark:bg-[#0D1527]",
                     k === 0 && "rounded-l-2xl",
                     k === SLICES - 1 && "rounded-r-2xl",
                   )}

@@ -75,7 +75,7 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Invoice - ${invoice.invoiceNumber} - MilestoneOS</title>
+  <title>Invoice - ${invoice.invoiceNumber} - PayZorr</title>
   <style>
     @page {
       size: A4 portrait;
@@ -348,7 +348,7 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
   <div class="invoice-card">
     <div class="header">
       <div>
-        <div class="brand">MilestoneOS</div>
+        <div class="brand">PayZorr</div>
         <div class="brand-sub">Contract Escrow & Milestone Settlement</div>
       </div>
       <div class="title-box">
@@ -424,7 +424,7 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
     </div>
 
     <div class="footer">
-      Official settlement invoice generated via MilestoneOS Mutual Escrow • Strictly 1 Page Document • Page 1 of 1
+      Official settlement invoice generated via PayZorr Mutual Escrow • Strictly 1 Page Document • Page 1 of 1
     </div>
   </div>
 </body>
@@ -614,7 +614,7 @@ export default function InvoiceModal({
           currency: milestone.currency || "USD",
           cryptographicHash: `0x8f4c${Date.now().toString(16).slice(-6)}f92a`,
           disclaimer:
-            "This official settlement invoice certifies mutual milestone completion and settlement release via MilestoneOS.",
+            "This official settlement invoice certifies mutual milestone completion and settlement release via PayZorr.",
         });
         setLoading(false);
       }
@@ -686,7 +686,7 @@ Billed To (Client): ${invoice.client.name} (${invoice.client.company}) | ID: ${i
 Issued By (Freelancer): ${invoice.freelancer.name} (${invoice.freelancer.title}) | ID: ${invoice.freelancer.freelancerId || "N/A"}
 
 Ledger Hash: ${invoice.cryptographicHash}
-Settled securely via MilestoneOS Mutual Escrow.`;
+Settled securely via PayZorr Mutual Escrow.`;
 
     navigator.clipboard?.writeText(summary);
     setCopiedSummary(true);
@@ -701,7 +701,7 @@ Settled securely via MilestoneOS Mutual Escrow.`;
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `MilestoneOS_Invoice_${invoice.invoiceNumber}.html`;
+    link.download = `PayZorr_Invoice_${invoice.invoiceNumber}.html`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -795,7 +795,7 @@ Settled securely via MilestoneOS Mutual Escrow.`;
                 <div className="flex items-start justify-between border-b-2 border-slate-900 pb-3.5">
                   <div>
                     <div className="text-xl font-black text-[#0070BA] tracking-tight">
-                      MilestoneOS
+                      PayZorr
                     </div>
                     <div className="text-[11px] text-slate-500 font-medium mt-0.5">
                       Contract Escrow & Milestone Settlement
@@ -973,7 +973,7 @@ Settled securely via MilestoneOS Mutual Escrow.`;
 
                 {/* 6. Strict 1-Page Document Footer */}
                 <div className="pt-3 border-t border-slate-200 text-center text-[10px] text-slate-400">
-                  Official settlement invoice generated via MilestoneOS Mutual Escrow • Strictly 1 Page Document • Page 1 of 1
+                  Official settlement invoice generated via PayZorr Mutual Escrow • Strictly 1 Page Document • Page 1 of 1
                 </div>
               </div>
             )}

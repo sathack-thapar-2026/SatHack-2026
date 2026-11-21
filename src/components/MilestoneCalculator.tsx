@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ShieldCheck, Layers } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
+import MilestoneWheel from "@/components/MilestoneWheel";
 
 export default function MilestoneCalculator() {
   const [budget, setBudget] = useState(50000);
@@ -111,48 +112,13 @@ export default function MilestoneCalculator() {
           </div>
         </ScrollReveal>
 
-        {/* 4 Milestones Cards */}
-        <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {milestones.map((m, idx) => {
-            const amount = Math.round((currentBudget * m.percent) / 100);
-            return (
-              <ScrollReveal
-                key={m.index}
-                direction="up"
-                delay={200 + idx * 100}
-                className="h-full"
-              >
-                <div className="h-full rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-md shadow-slate-200/50 hover:shadow-lg hover:border-[#0070BA]/50 transition-all dark:border-slate-800 dark:bg-[#131B2E]/90 dark:shadow-none backdrop-blur-md flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between text-xs font-bold">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-50 text-[#0070BA] font-mono dark:bg-[#0070BA]/20 dark:text-sky-300">
-                        0{m.index}
-                      </span>
-                      <span className="text-[#0070BA] dark:text-sky-400 font-bold">
-                        {m.percent}%
-                      </span>
-                    </div>
-
-                    <div className="mt-3 text-xl font-black text-slate-900 dark:text-white tabular-nums">
-                      {symbol}{amount.toLocaleString()}
-                    </div>
-
-                    <h4 className="mt-1.5 text-sm font-bold text-slate-800 dark:text-slate-200">
-                      {m.title}
-                    </h4>
-                    <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                      {m.desc}
-                    </p>
-                  </div>
-
-                  <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-[#0070BA] dark:text-sky-400 flex items-center gap-1.5">
-                    <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                    <span>Paid safely after review</span>
-                  </div>
-                </div>
-              </ScrollReveal>
-            );
-          })}
+        {/* 3D Scroll-Driven Milestone Wheel (WorksWheel transformation) */}
+        <div className="mt-12 w-full">
+          <MilestoneWheel
+            milestones={milestones}
+            currentBudget={currentBudget}
+            symbol={symbol}
+          />
         </div>
       </div>
     </section>

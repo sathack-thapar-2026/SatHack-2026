@@ -15,10 +15,15 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MilestoneOS — Verified Freelance Milestones & Safe Payouts",
+  title: "PayZorr — Payments Made Effortless | Verified Milestones & Safe Payouts",
   description:
-    "Work completed. Progress verified. Payments made with confidence. The friendly milestone escrow platform for freelancers and clients.",
+    "PayZorr: Work completed. Progress verified. Payments made with confidence. Payments Made Effortless for freelancers and clients.",
+  icons: {
+    icon: "/payzorr-icon.png",
+    apple: "/payzorr-icon.png",
+  },
   keywords: [
+    "PayZorr",
     "Milestone Payments",
     "Freelance Payment Protection",
     "AI Project Verification",
@@ -39,7 +44,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                var theme = localStorage.getItem('milestoneos-theme');
+                var theme = localStorage.getItem('payzorr-theme') || localStorage.getItem('milestoneos-theme');
                 if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                   document.documentElement.classList.add('dark');
                 } else {
