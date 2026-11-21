@@ -286,7 +286,7 @@ export async function verifyMilestoneWithAI(
 Your job is to objectively evaluate submitted deliverables (photos, artwork, Figma mockups, source code, ZIP packages, PDF reports, or staging URLs) against the contract acceptance criteria agreed between client and freelancer.
 
 IMPORTANT LEGAL & OPERATIONAL CONTEXT:
-Your evaluation is strictly ADVISORY to assist the client in their review. You do NOT make binding legal decisions, approve milestones, or release escrow payments. The client retains sole authority to approve or request changes.
+Your evaluation is strictly ADVISORY to assist the client in their review. You do NOT make binding legal decisions, approve milestones, or release payments. The client retains sole authority to approve or request changes.
 
 PROJECT SCOPE & MILESTONE:
 - Milestone Title: ${milestoneTitle}

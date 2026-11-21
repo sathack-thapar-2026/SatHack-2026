@@ -265,7 +265,7 @@ export default function HeroVerificationMatrix() {
               </div>
 
               <div className="flex items-center justify-between rounded bg-slate-950/60 p-2 border border-slate-800/60">
-                <span className="text-slate-400">Escrow Value</span>
+                <span className="text-slate-400">Milestone Value</span>
                 <span className="font-semibold text-white">₹15,000 INR</span>
               </div>
             </div>

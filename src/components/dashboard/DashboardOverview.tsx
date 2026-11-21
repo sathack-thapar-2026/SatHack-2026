@@ -408,7 +408,7 @@ export default function DashboardOverview({
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               {role === "client"
-                ? "Create your first project to define custom milestone acceptance criteria, invite a freelancer, and fund escrow with Secure Payments."
+                ? "Create your first project to define custom milestone acceptance criteria, invite a freelancer, and pay each milestone with Secure Payments."
                 : "Accept a client invitation link or share your permanent PerMile ID with a client to receive milestone proposals."}
             </p>
           </div>

@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error: isInr
-            ? "Secure checkout does not support INR (Indian Rupee) directly. Escrow milestone contracts must be settled in supported currencies (USD). Please adjust the milestone currency to USD."
+            ? "Secure checkout does not support INR (Indian Rupee) directly. Milestone contracts must be settled in supported currencies (USD). Please adjust the milestone currency to USD."
             : `Secure checkout does not support ${contractCurrency}. Please adjust the milestone currency to USD.`,
           currency: contractCurrency,
           isUnsupportedCurrency: true,

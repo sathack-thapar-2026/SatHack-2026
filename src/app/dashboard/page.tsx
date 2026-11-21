@@ -350,7 +350,7 @@ function DashboardInner() {
               Simple Milestone Payments
             </span>
             <span className="text-slate-400">
-              Milestone Escrow & Protected Settlements
+              Milestone Payments & Protected Settlements
             </span>
           </div>
         </footer>

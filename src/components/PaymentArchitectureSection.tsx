@@ -112,7 +112,7 @@ export default function PaymentArchitectureSection() {
                   Real Marketplace Notice
                 </div>
                 <h3 className="mt-2 text-xl font-bold text-white">
-                  Escrow & Multiparty Payouts
+                  Multiparty Payouts
                 </h3>
                 <p className="mt-2 text-xs text-slate-400 leading-relaxed">
                   Standard Secure Checkout processes merchant-to-buyer transactions. In PerMile, we model milestone-based holding and document how production scaling utilizes multiparty payments or a payouts API.

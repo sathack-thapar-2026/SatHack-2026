@@ -76,21 +76,6 @@ export default function CinematicHeroText() {
 
   return (
     <div className="mx-auto max-w-6xl text-center select-none">
-      {/* Eyebrow Pill */}
-      <div
-        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 dark:bg-[#131F33]/90 border border-[#0284C7]/30 dark:border-[#58C7E8]/30 backdrop-blur-md shadow-md shadow-cyan-900/5 dark:shadow-black/40 mb-6 transition-all duration-700"
-        style={{
-          transform: hasEntered || isReduced ? "translate3d(0, 0, 0)" : "translate3d(0, 16px, 0)",
-          opacity: hasEntered || isReduced ? 1 : 0,
-          transitionDelay: isReduced ? "0ms" : "300ms",
-        }}
-      >
-        <span className="h-2 w-2 rounded-full bg-[#0284C7] dark:bg-[#58C7E8] animate-pulse" />
-        <span className="text-[11px] font-extrabold tracking-widest uppercase text-[#0284C7] dark:text-[#58C7E8]">
-          PERMILE VERIFIED ESCROW
-        </span>
-      </div>
-
       {/* Main Heading — Word by Word Cinematic Reveal */}
       <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.12]">
         {/* Line 1 */}

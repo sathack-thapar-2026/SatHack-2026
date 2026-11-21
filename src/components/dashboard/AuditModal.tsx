@@ -350,7 +350,7 @@ export default function AuditModal({
               <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 dark:border-white/5 dark:bg-white/[0.02] flex items-center gap-2.5 text-slate-600 dark:text-slate-400 text-[11px]">
                 <Info className="h-4 w-4 text-[#0070BA] dark:text-sky-400 shrink-0" />
                 <p className="leading-snug">
-                  <strong>Advisory Evaluation Only:</strong> Gemini provides automated criteria checks. It cannot release escrow payments, approve milestones, or enforce binding decisions. Milestone approval remains strictly under your control.
+                  <strong>Advisory Evaluation Only:</strong> Gemini provides automated criteria checks. It cannot release payments, approve milestones, or enforce binding decisions. Milestone approval remains strictly under your control.
                 </p>
               </div>
 
@@ -641,7 +641,7 @@ export default function AuditModal({
         {/* Footer Actions */}
         <div className="p-4 border-t border-slate-100 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0 text-xs">
           <div className="text-slate-500 dark:text-slate-400">
-            Escrow Payment:{" "}
+            Milestone Payment:{" "}
             <strong className="text-slate-900 dark:text-white font-mono">
               {formatCurrency(milestone.amount, milestone.currency || project.currency)}
             </strong>

@@ -86,7 +86,7 @@ export default function PaymentModal({
           <div className="flex items-center gap-2">
             <PaymentIcon className="h-5 w-5" />
             <h3 className="font-bold text-slate-900 dark:text-white text-base">
-              Secure Escrow Checkout
+              Secure Checkout
             </h3>
           </div>
 
@@ -111,13 +111,13 @@ export default function PaymentModal({
             <div>
               <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                 <ShieldCheck className="h-3.5 w-3.5" />
-                Verified Escrow Settlement Completed
+                Verified Settlement Completed
               </span>
               <h4 className="text-2xl font-black text-slate-900 dark:text-white mt-2 font-mono">
                 {money(verifiedReceipt.amount, verifiedReceipt.currency)}
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Settled to {project.freelancer.name} via Verified Escrow
+                Settled to {project.freelancer.name} via Secure Checkout
               </p>
             </div>
 
@@ -194,7 +194,7 @@ export default function PaymentModal({
                 Authorized by Buyer • Capturing Payment...
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">
-                Executing server-side capture on Secure Payments REST API and verifying escrow release.
+                Executing server-side capture on Secure Payments REST API and verifying the payment.
               </p>
             </div>
           </div>
@@ -283,7 +283,7 @@ export default function PaymentModal({
                     </div>
                     <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
                       This milestone contract is denominated in <strong>{money(contractAmount, rawCurrency)}</strong>.
-                      Secure checkout does not support {rawCurrency} directly for escrow checkout.
+                      Secure checkout does not support {rawCurrency} directly for this checkout.
                     </p>
                     <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
                       Per platform contract policy, silent or arbitrary currency conversions are prohibited.

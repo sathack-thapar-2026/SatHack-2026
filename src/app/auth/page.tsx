@@ -688,7 +688,7 @@ export default function AuthPage() {
   const workflowDescriptions = {
     1: "Freelancer submits deliverables, source repository link, and live staging preview.",
     2: "Multi-modal AI objectively audits submitted work against the agreed contract criteria.",
-    3: "Client signs off with verified certainty, and protected escrow funds release immediately.",
+    3: "Client signs off with verified certainty, and the milestone payment is released immediately.",
   };
 
   return (
@@ -1105,7 +1105,7 @@ export default function AuthPage() {
             }}
             className="pt-4 text-center text-[11px] text-[#60778E] dark:text-slate-400"
           >
-            <span>Verified Milestone Settlement • Protected Escrow Architecture</span>
+            <span>Verified Milestone Settlement • Protected Payments</span>
           </div>
         </div>
 

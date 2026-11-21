@@ -338,7 +338,7 @@ export default function ProposalReviewModal({
           <div className="p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 text-[11px] text-slate-500 dark:text-slate-400 flex items-start gap-2">
             <ShieldCheck className="h-4 w-4 text-[#0070BA] shrink-0 mt-0.5" />
             <p>
-              Work and escrow payments begin only after this proposal is mutually accepted. Accepted milestone requirements cannot be silently modified later.
+              Work and milestone payments begin only after this proposal is mutually accepted. Accepted milestone requirements cannot be silently modified later.
             </p>
           </div>
         </div>

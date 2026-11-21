@@ -268,7 +268,7 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
       color: #64748B;
       margin-top: 2px;
     }
-    .escrow-pill {
+    .settled-pill {
       font-size: 10px;
       font-weight: 700;
       color: #166534 !important;
@@ -377,7 +377,7 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
     <div class="header">
       <div>
         <div class="brand">PerMile</div>
-        <div class="brand-sub">Contract Escrow & Milestone Settlement</div>
+        <div class="brand-sub">Contract & Milestone Settlement</div>
       </div>
       <div class="title-box">
         <div class="title">INVOICE</div>
@@ -410,7 +410,7 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
         <div class="proj-sub">Stage 0${esc(invoice.stageNumber)} — ${esc(invoice.milestoneTitle)}</div>
       </div>
       <div>
-        <span class="escrow-pill">100% Escrow Released</span>
+        <span class="settled-pill">100% Settled</span>
       </div>
     </div>
 
@@ -439,20 +439,20 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
       <div class="settlement-info">
         <div><span class="settlement-label">Payment Method:</span> <span class="settlement-val">${esc(invoice.paymentMethod)}</span></div>
         <div><span class="settlement-label">Transaction ID:</span> <span class="mono settlement-val">${esc(invoice.transactionId)}</span></div>
-        <div><span class="settlement-label">Escrow Settlement:</span> <span class="settlement-val">Direct Mutual Release via Secure Escrow</span></div>
+        <div><span class="settlement-label">Settlement:</span> <span class="settlement-val">Direct Mutual Release via Secure Checkout</span></div>
         <div><span class="settlement-label">Ledger Verification Hash:</span> <span class="mono" style="font-size: 10px;">${esc(invoice.cryptographicHash)}</span></div>
       </div>
 
       <div class="totals-box">
         <div class="total-row"><span>Milestone Subtotal:</span> <span class="mono">${esc(money(invoice.subtotal, invoice.currency))}</span></div>
-        <div class="total-row"><span>Escrow Released:</span> <span class="mono">-${esc(money(invoice.escrowReleased, invoice.currency))}</span></div>
+        <div class="total-row"><span>Amount Released:</span> <span class="mono">-${esc(money(invoice.escrowReleased, invoice.currency))}</span></div>
         <div class="total-row"><span>Platform Fee:</span> <span class="mono">${esc(sym)}0.00</span></div>
         <div class="total-row total-final"><span>Total Paid:</span> <span class="mono">${esc(money(invoice.total, invoice.currency))} ${esc(invoice.currency)}</span></div>
       </div>
     </div>
 
     <div class="footer">
-      Official settlement invoice generated via PerMile Mutual Escrow • Strictly 1 Page Document • Page 1 of 1
+      Official settlement invoice generated via PerMile • Strictly 1 Page Document • Page 1 of 1
     </div>
   </div>
 </body>
@@ -658,7 +658,7 @@ export default function InvoiceModal({
     if (!invoice) return;
     const summary = `Official Invoice
 Invoice Number: ${invoice.invoiceNumber}
-Status: ${invoice.status} via Escrow
+Status: ${invoice.status} via Secure Checkout
 Transaction ID: ${invoice.transactionId}
 Payment Date: ${invoice.paymentDate}
 
@@ -670,7 +670,7 @@ Billed To (Client): ${invoice.client.name} (${invoice.client.company}) | ID: ${i
 Issued By (Freelancer): ${invoice.freelancer.name} (${invoice.freelancer.title}) | ID: ${invoice.freelancer.freelancerId || "N/A"}
 
 Ledger Hash: ${invoice.cryptographicHash}
-Settled securely via PerMile Mutual Escrow.`;
+Settled securely via PerMile.`;
 
     navigator.clipboard?.writeText(summary);
     setCopiedSummary(true);
@@ -782,7 +782,7 @@ Settled securely via PerMile Mutual Escrow.`;
                       PerMile
                     </div>
                     <div className="text-[11px] text-slate-500 font-medium mt-0.5">
-                      Contract Escrow & Milestone Settlement
+                      Contract & Milestone Settlement
                     </div>
                   </div>
 
@@ -863,7 +863,7 @@ Settled securely via PerMile Mutual Escrow.`;
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/90 px-2 py-0.5 rounded border border-emerald-300">
-                      100% Escrow Released
+                      100% Settled
                     </span>
                   </div>
                 </div>
@@ -921,7 +921,7 @@ Settled securely via PerMile Mutual Escrow.`;
                       </button>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-medium">Escrow Settlement:</span>{" "}
+                      <span className="text-slate-500 font-medium">Settlement:</span>{" "}
                       <span className="font-semibold text-emerald-700">Direct Mutual Release</span>
                     </div>
                     <div className="text-[10px] text-slate-400 truncate">
@@ -937,7 +937,7 @@ Settled securely via PerMile Mutual Escrow.`;
                       </span>
                     </div>
                     <div className="flex justify-between text-slate-600">
-                      <span>Escrow Released:</span>
+                      <span>Amount Released:</span>
                       <span className="font-mono font-semibold text-emerald-700">
                         -{money(invoice.escrowReleased, invoice.currency)}
                       </span>
@@ -957,7 +957,7 @@ Settled securely via PerMile Mutual Escrow.`;
 
                 {/* 6. Strict 1-Page Document Footer */}
                 <div className="pt-3 border-t border-slate-200 text-center text-[10px] text-slate-400">
-                  Official settlement invoice generated via PerMile Mutual Escrow • Strictly 1 Page Document • Page 1 of 1
+                  Official settlement invoice generated via PerMile • Strictly 1 Page Document • Page 1 of 1
                 </div>
               </div>
             )}

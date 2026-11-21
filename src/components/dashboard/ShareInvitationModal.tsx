@@ -287,7 +287,7 @@ export default function ShareInvitationModal({
               <span>Safe Mutual Agreement Process</span>
             </div>
             <p>
-              Opening this link does not automatically accept the project. The recipient must authenticate on PerMile, inspect the agreed milestone criteria, and explicitly click <strong>Accept Proposal</strong> to activate work and escrow.
+              Opening this link does not automatically accept the project. The recipient must authenticate on PerMile, inspect the agreed milestone criteria, and explicitly click <strong>Accept Proposal</strong> to activate the work and payments.
             </p>
           </div>
         </div>

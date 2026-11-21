@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     "Milestone Payments",
     "Freelance Payment Protection",
     "AI Project Verification",
-    "Freelancer Escrow",
+    "Milestone Settlement",
     "Secure Settlements",
   ],
 };
