@@ -293,7 +293,7 @@ export default function HillsLandscapeBackground() {
           backgroundColor="transparent"
           lightMode={false} // Luminous additive blooming in both themes for true ethereal glow
           threadCount={6}
-          speed={0.075} // Reduced speed by 25% (from 0.10 to 0.075) for graceful majestic flow
+          speed={0.038} // Slowed speed by 50% (from 0.075 to 0.038) for ultra-gentle, serene drift
           frequency={3.8}
           spread={0.28}
           position={0.48}
