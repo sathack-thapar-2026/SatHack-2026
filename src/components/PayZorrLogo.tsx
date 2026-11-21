@@ -28,10 +28,10 @@ export default function PermileLogo({
   };
 
   const textSizes = {
-    sm: "text-lg",
-    md: "text-xl sm:text-2xl",
-    lg: "text-2xl sm:text-3xl",
-    xl: "text-3xl sm:text-4xl",
+    sm: "text-lg tracking-[-0.03em]",
+    md: "text-xl sm:text-2xl tracking-[-0.035em]",
+    lg: "text-2xl sm:text-3xl tracking-[-0.035em]",
+    xl: "text-3xl sm:text-4xl tracking-[-0.04em]",
   };
 
   const content = (
@@ -39,7 +39,7 @@ export default function PermileLogo({
       <div className={cn("relative shrink-0 transition-transform group-hover:scale-105 rounded-xl overflow-hidden shadow-xs", iconSizes[size])}>
         <img
           src="/permile-icon.png"
-          alt="Permile"
+          alt="PerMile"
           className="size-full object-contain drop-shadow-sm rounded-xl"
         />
       </div>
@@ -48,11 +48,14 @@ export default function PermileLogo({
         <div className="flex flex-col justify-center">
           <span
             className={cn(
-              "font-black tracking-tight leading-none text-[#172B43] dark:text-[#F4F7FA] group-hover:text-[#087FBE] dark:group-hover:text-cyan-400 transition-colors",
+              "font-sans font-extrabold leading-none transition-transform group-hover:scale-[1.01]",
               textSizes[size]
             )}
+            style={{ fontFamily: "var(--font-sans), 'Plus Jakarta Sans', sans-serif" }}
           >
-            Permile
+            <span className="text-[#172B43] dark:text-[#F4F7FA] transition-colors">Per</span>
+            <span className="text-[#0284C7] dark:text-[#38BDF8] transition-colors">M</span>
+            <span className="text-[#172B43] dark:text-[#F4F7FA] transition-colors">ile</span>
           </span>
           {(showTagline || variant === "full") && (
             <span className="text-[10px] font-semibold text-[#526B82] dark:text-[#CBD5E1] tracking-wider uppercase mt-0.5">

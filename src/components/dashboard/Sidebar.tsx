@@ -375,7 +375,7 @@ export default function Sidebar({
 
         {/* Bottom Profile & Actions */}
         <div className="p-3 border-t border-slate-200/80 dark:border-white/10 bg-slate-50/50 dark:bg-black/20">
-          {/* Active User Card with Permile ID */}
+          {/* Active User Card with PerMile ID */}
           <div className="p-2.5 rounded-xl bg-white dark:bg-[#0D1527] border border-slate-200/80 dark:border-white/10 shadow-2xs mb-2.5 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <button

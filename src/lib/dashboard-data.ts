@@ -697,7 +697,7 @@ export const INITIAL_PROJECTS: ProjectContract[] = [
       {
         id: "act_103",
         timestamp: "Nov 05, 2026 • 02:16 PM",
-        actor: "Permile Assistant",
+        actor: "PerMile Assistant",
         actorRole: "ai_system",
         action: "Automated work review completed: 3 of 3 requirements met.",
         milestoneTitle: "Shopping Cart & Checkout Flow",

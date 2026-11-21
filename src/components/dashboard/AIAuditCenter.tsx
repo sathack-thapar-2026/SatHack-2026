@@ -139,7 +139,7 @@ export default function AIAuditCenter({ onOpenAudit, onSelectProject }: AIAuditC
             How Automated Work Review Works
           </span>
           <p className="leading-relaxed text-slate-600 dark:text-slate-300 text-[11px] sm:text-xs">
-            Permile automatically checks submitted links and code against agreed milestone requirements to save you time. The AI provides a quick checklist, while the client always makes the final decision to approve the milestone or request changes.
+            PerMile automatically checks submitted links and code against agreed milestone requirements to save you time. The AI provides a quick checklist, while the client always makes the final decision to approve the milestone or request changes.
           </p>
         </div>
       </div>

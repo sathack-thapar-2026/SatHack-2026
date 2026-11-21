@@ -35,7 +35,7 @@ export default function Footer() {
 
         <div className="mt-8 pt-6 border-t border-[#172B43]/10 dark:border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-[#475569] dark:text-[#94A3B8]">
           <div>
-            © 2026 Permile. Payments Made Effortless. Work completed. Progress verified.
+            © 2026 PerMile. Payments Made Effortless. Work completed. Progress verified.
           </div>
           <div className="flex items-center gap-2 text-[#1E3A56] dark:text-[#CBD5E1] font-semibold">
             <ShieldCheck className="h-3.5 w-3.5 text-[#0284C7] dark:text-[#58C7E8]" />

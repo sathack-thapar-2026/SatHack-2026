@@ -52,7 +52,7 @@ export default function PayPalArchitectureSection() {
             Engineered on PayPal Sandbox & Orders v2
           </h2>
           <p className="mt-4 text-base sm:text-lg text-slate-400 leading-relaxed">
-            PayPal is not a mock button or an afterthought in Permile. Our architecture implements an end-to-end verified server-side payment lifecycle.
+            PayPal is not a mock button or an afterthought in PerMile. Our architecture implements an end-to-end verified server-side payment lifecycle.
           </p>
         </div>
 
@@ -115,7 +115,7 @@ export default function PayPalArchitectureSection() {
                   Escrow & Multiparty Payouts
                 </h3>
                 <p className="mt-2 text-xs text-slate-400 leading-relaxed">
-                  Standard PayPal Checkout processes merchant-to-buyer transactions. In Permile, we model milestone-based holding and document how production scaling utilizes PayPal Multiparty or Payouts API.
+                  Standard PayPal Checkout processes merchant-to-buyer transactions. In PerMile, we model milestone-based holding and document how production scaling utilizes PayPal Multiparty or Payouts API.
                 </p>
               </div>
               <div className="mt-4 text-[11px] font-mono text-slate-400 flex items-center gap-1.5">

@@ -120,7 +120,7 @@ export default function CinematicHeroText() {
         }}
       >
         <p>
-          Permile lets you pay freelancers in safe stages. Before any money moves,
+          PerMile lets you pay freelancers in safe stages. Before any money moves,
           AI checks that the work matches what was promised—so clients never get
           burned, and freelancers always get paid on time.
         </p>

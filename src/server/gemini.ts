@@ -1,5 +1,5 @@
 /**
- * Permile — Gemini AI Verification Engine
+ * PerMile — Gemini AI Verification Engine
  * Compares multi-modal deliverables (code repo, live demo, video, notes)
  * against agreed contract acceptance criteria.
  */
@@ -271,7 +271,7 @@ export async function verifyMilestoneWithAI(
           }
         }
 
-        const prompt = `You are the Permile AI Deliverable Acceptance Evaluator.
+        const prompt = `You are the PerMile AI Deliverable Acceptance Evaluator.
 Your job is to objectively evaluate submitted deliverables (photos, artwork, Figma mockups, source code, ZIP packages, PDF reports, or staging URLs) against the contract acceptance criteria agreed between client and freelancer.
 
 IMPORTANT LEGAL & OPERATIONAL CONTEXT:
@@ -745,7 +745,7 @@ export async function generateInvoiceWithAI(
   // Attempt live Gemini line item structuring if key is present
   if (hasGeminiKey() && apiKey) {
     try {
-      const prompt = `You are the Permile Invoice Engine.
+      const prompt = `You are the PerMile Invoice Engine.
 You must NOT generate an HTML layout, CSS, or marketing essays.
 The invoice layout is already fixed and strictly restricted to 1 page.
 Your ONLY role is to provide 2 to 4 concise, genuine professional service line items for this completed software milestone.
@@ -820,7 +820,7 @@ Return strictly valid JSON:
             total: milestone.amount,
             currency: milestone.currency || "USD",
             cryptographicHash,
-            disclaimer: "This official settlement invoice certifies mutual milestone completion and settlement release via Permile.",
+            disclaimer: "This official settlement invoice certifies mutual milestone completion and settlement release via PerMile.",
             isLiveGemini: true,
           };
         }
@@ -859,7 +859,7 @@ Return strictly valid JSON:
     stageNumber: stageNum,
     aiExecutiveSummary: "Milestone deliverables inspected and certified compliant with agreed contract specifications.",
     aiVerificationScore: 100,
-    aiAuditNotes: `All ${criteriaCertified.length} acceptance criteria verified authentic and signed off. Transaction settled through Permile mutual escrow protocol.`,
+    aiAuditNotes: `All ${criteriaCertified.length} acceptance criteria verified authentic and signed off. Transaction settled through PerMile mutual escrow protocol.`,
     criteriaCertified,
     lineItems: defaultLineItems,
     subtotal: milestone.amount,
@@ -869,7 +869,7 @@ Return strictly valid JSON:
     currency: milestone.currency || "USD",
     cryptographicHash,
     disclaimer:
-      "This official settlement invoice certifies mutual milestone completion and settlement release via Permile.",
+      "This official settlement invoice certifies mutual milestone completion and settlement release via PerMile.",
     isLiveGemini: false,
   };
 }

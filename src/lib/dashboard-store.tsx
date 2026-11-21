@@ -1844,7 +1844,7 @@ export function DashboardProvider({
               {
                 id: `act_completed_${Date.now()}`,
                 timestamp: "Just now",
-                actor: "Permile",
+                actor: "PerMile",
                 actorRole: "paypal",
                 action: `Project "${project.title}" completed! All ${updatedMilestones.length} milestones paid and fully settled.`,
                 details: `100% of milestones completed. Total payout: $${(project.totalPaid + paidAmount).toLocaleString()} USD.`,

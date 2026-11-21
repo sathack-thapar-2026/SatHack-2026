@@ -63,7 +63,7 @@ export default function FeaturesGrid() {
             Built for Real Freelancers and Serious Clients
           </h2>
           <p className="mt-3 text-base text-slate-400">
-            No generic chatbots or vaporware promises. Permile is designed around the reality of software engineering contracts and financial settlements.
+            No generic chatbots or vaporware promises. PerMile is designed around the reality of software engineering contracts and financial settlements.
           </p>
         </div>
 

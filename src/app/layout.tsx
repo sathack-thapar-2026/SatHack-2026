@@ -21,15 +21,15 @@ const newsreader = Newsreader({
 });
 
 export const metadata: Metadata = {
-  title: "Permile — Payments Made Effortless | Verified Milestones & Safe Payouts",
+  title: "PerMile — Payments Made Effortless | Verified Milestones & Safe Payouts",
   description:
-    "Permile: Work completed. Progress verified. Payments made with confidence. Payments Made Effortless for freelancers and clients.",
+    "PerMile: Work completed. Progress verified. Payments made with confidence. Payments Made Effortless for freelancers and clients.",
   icons: {
     icon: "/permile-icon.png",
     apple: "/permile-icon.png",
   },
   keywords: [
-    "Permile",
+    "PerMile",
     "Milestone Payments",
     "Freelance Payment Protection",
     "AI Project Verification",
