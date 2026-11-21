@@ -31,17 +31,13 @@ import {
 import { isSupabaseConfigured, getSupabaseClient } from "@/lib/supabase";
 
 type AuthMode = "login" | "signup";
-type UserRole = "client" | "freelancer" | "both";
 
-function PaymentIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="5" width="20" height="14" rx="2.5" />
-      <path d="M2 10h20" />
-      <path d="M6 15h4" />
-    </svg>
-  );
+/** Only same-site paths are allowed as a post-login destination (blocks open redirects). */
+function safeReturnUrl(raw: string | null, fallback: string): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return fallback;
+  return raw;
 }
+type UserRole = "client" | "freelancer" | "both";
 
 function AuthForm() {
   const router = useRouter();
@@ -149,48 +145,8 @@ function AuthForm() {
       }
     }
 
-    try {
-      localStorage.removeItem("milestoneos_demo_mode");
-      localStorage.setItem(
-        "milestoneos_active_user_v8",
-        JSON.stringify({
-          name: demoUser.name,
-          email: demoUser.email,
-          avatar: "RV",
-          baseCode: "2W8L41",
-          clientId: "CL-2W8L41",
-          freelancerId: "FL-2W8L41",
-          milestoneOSId: demoUser.id,
-          role: demoRole,
-          roles: ["client", "freelancer"],
-          isDemo: false,
-        })
-      );
-      localStorage.setItem("milestoneos_role_v8", demoRole);
-    } catch (_) {}
-
-    setSuccessMsg(`Welcome, ${demoUser.name} (${demoRole === "client" ? "Client View" : "Freelancer View"})...`);
-    setTimeout(() => {
-      router.push(`/dashboard?role=${demoRole}`);
-    }, 350);
-  };
-
-  // Instant Quick Access Authentication
-  const handleQuickAccessAuth = () => {
-    setLoading(true);
-    setErrorMsg(null);
-    setSuccessMsg(null);
-    const returnUrl = searchParams.get("returnUrl") || "/dashboard?role=client";
-
-    setTimeout(() => {
-      setLoading(false);
-      setSuccessMsg(
-        `Authenticated with payout account. Redirecting to workspace...`
-      );
-      setTimeout(() => {
-        router.push(returnUrl);
-      }, 400);
-    }, 700);
+    setLoading(false);
+    setErrorMsg("The demo account could not be signed in right now. Please sign in with your own account.");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -220,7 +176,7 @@ function AuthForm() {
     }
 
     setLoading(true);
-    const returnUrl = searchParams.get("returnUrl") || "/dashboard?role=client";
+    const returnUrl = safeReturnUrl(searchParams.get("returnUrl"), "/dashboard?role=client");
     const supabaseClient = getSupabaseClient();
 
     // 1. If Supabase is configured in .env.local, use Supabase Auth
@@ -285,7 +241,10 @@ function AuthForm() {
 
           syncLocalProfile(userName, cleanEmail, userMsoId, userRole);
           setSuccessMsg(`Welcome back, ${userName}! Authenticated via Supabase.`);
-          setTimeout(() => router.push(`/dashboard?role=${userRole}`), 500);
+          setTimeout(
+            () => router.push(safeReturnUrl(searchParams.get("returnUrl"), `/dashboard?role=${userRole}`)),
+            500
+          );
           return;
         }
       } catch (err: any) {
@@ -295,21 +254,9 @@ function AuthForm() {
       }
     }
 
-    // 2. Fallback: Built-in local authentication
-    const newId = generateMilestoneOSId();
-    syncLocalProfile(name, email, newId);
-
-    setTimeout(() => {
-      setLoading(false);
-      setSuccessMsg(
-        mode === "login"
-          ? `Welcome back, ${name || "User"}! Redirecting to your workspace...`
-          : `Account created successfully with unique MilestoneOS ID (${newId})! Welcome to MilestoneOS.`
-      );
-      setTimeout(() => {
-        router.push(returnUrl);
-      }, 400);
-    }, 700);
+    // The auth service is not configured, and there is deliberately no password-less fallback login.
+    setLoading(false);
+    setErrorMsg("Sign-in is unavailable because the authentication service is not configured.");
   };
 
   return (
@@ -600,19 +547,6 @@ function AuthForm() {
             )}
           </button>
         </form>
-
-        {/* ONE-CLICK QUICK ACCESS (Fast Sandbox Access) */}
-        <div className="mt-3.5">
-          <button
-            type="button"
-            onClick={handleQuickAccessAuth}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-slate-300/60 bg-white/60 hover:bg-white/90 px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-2xs hover:shadow-xs transition-all hover:scale-[1.005] active:scale-[0.99] dark:border-white/10 dark:bg-[#131c31]/50 dark:text-slate-200 dark:hover:bg-[#1a2642]/75 backdrop-blur-md cursor-pointer"
-          >
-            <PaymentIcon className="h-3.5 w-3.5" />
-            <span>Continue with Instant Sandbox</span>
-          </button>
-        </div>
 
         {/* Footer switch prompt */}
         <div className="mt-5 text-center text-xs text-slate-600 dark:text-slate-400">

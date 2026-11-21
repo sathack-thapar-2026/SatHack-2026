@@ -6,39 +6,47 @@ import {
   formatFreelancerId,
 } from "@/lib/dashboard-data";
 import { resolveCounterpartyIdentity } from "@/server/identity";
+import { requireCaller } from "@/server/auth";
+import { DomainError, errorResponse } from "@/server/errors";
+
+/** j***@example.com — enough to recognise an account, not enough to harvest addresses. */
+function maskEmail(email?: string | null): string {
+  if (!email || !email.includes("@")) return "";
+  const [local, domain] = email.split("@");
+  return `${local.slice(0, 1)}***@${domain}`;
+}
 
 export async function GET(req: NextRequest) {
   try {
+    // Only signed-in users can browse or look up other accounts.
+    const caller = await requireCaller(req);
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const email = searchParams.get("email");
     const query = searchParams.get("q");
     const isList = searchParams.get("list") === "true";
-    const expectedRole = (searchParams.get("expectedRole") as "client" | "freelancer") || (searchParams.get("role") as "client" | "freelancer") || "freelancer";
-    const proposerId = searchParams.get("proposerId") || req.headers.get("x-user-id");
-    const proposerEmail = searchParams.get("proposerEmail") || req.headers.get("x-user-email");
+    const roleParam = searchParams.get("expectedRole") || searchParams.get("role");
+    const expectedRole: "client" | "freelancer" = roleParam === "client" ? "client" : "freelancer";
     const serverSupabase = getServerSupabase();
 
-    // 1. Directory List Mode: Allows browsing/selecting registered counterparties
-    if (isList && serverSupabase) {
-      let dbQuery = serverSupabase
+    // 1. Directory List Mode: browse registered counterparties (never includes the caller)
+    if (isList) {
+      if (!serverSupabase) throw new DomainError(503, "Directory is unavailable.", "DB_UNAVAILABLE");
+
+      const { data: listData, error: listErr } = await serverSupabase
         .from("profiles")
         .select("id, milestone_os_id, full_name, email, role, avatar, company, title, rating")
+        .neq("id", caller.id)
         .order("full_name", { ascending: true })
         .limit(30);
-
-      if (expectedRole) {
-        // Match users with the requested role, 'both', or Rohan Verma
-        dbQuery = dbQuery.or(`role.eq.${expectedRole},role.eq.both,email.eq.rohan.verma@craftdev.io`);
-      }
-
-      const { data: listData, error: listErr } = await dbQuery;
       if (listErr) {
-        return NextResponse.json({ success: false, error: listErr.message }, { status: 500 });
+        console.error("Directory listing failed:", listErr);
+        throw new DomainError(500, "Could not load the directory.");
       }
 
       const users = (listData || []).map((row) => {
-        const base = extractBaseCode(row.milestone_os_id) || row.id.slice(0, 6).toUpperCase();
+        const base = extractBaseCode(row.milestone_os_id) || String(row.id).slice(0, 6).toUpperCase();
         return {
           id: row.id,
           baseCode: base,
@@ -46,7 +54,7 @@ export async function GET(req: NextRequest) {
           freelancerId: formatFreelancerId(base),
           milestoneOSId: expectedRole === "freelancer" ? formatFreelancerId(base) : formatClientId(base),
           name: row.full_name || "User",
-          email: row.email,
+          email: maskEmail(row.email),
           avatar: row.avatar || (row.full_name ? row.full_name.slice(0, 2).toUpperCase() : "US"),
           role: row.role,
           company: row.company || "Client Organization",
@@ -74,8 +82,8 @@ export async function GET(req: NextRequest) {
     const result = await resolveCounterpartyIdentity({
       identifier: lookupKey,
       expectedRole,
-      proposerId,
-      proposerEmail,
+      proposerId: caller.id,
+      proposerEmail: caller.email,
     });
 
     if (!result.success) {
@@ -93,12 +101,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       found: true,
-      user: result.user,
+      user: { ...result.user, email: maskEmail(result.user.email) },
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { found: false, error: err.message || "Failed to lookup user" },
-      { status: 500 }
-    );
+  } catch (err) {
+    if (err instanceof DomainError) {
+      return NextResponse.json({ found: false, error: err.message, code: err.code }, { status: err.status });
+    }
+    return errorResponse(err, "Failed to lookup user");
   }
 }

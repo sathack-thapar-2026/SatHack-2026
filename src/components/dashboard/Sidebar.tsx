@@ -540,11 +540,10 @@ export default function Sidebar({
               type="button"
               onClick={async () => {
                 try {
-                  localStorage.removeItem("milestoneos_active_user_v8");
-                  localStorage.removeItem("milestoneos_demo_mode");
-                  localStorage.removeItem("milestoneos_role_v8");
-                  localStorage.removeItem("milestoneos_projects_v7");
-                  localStorage.removeItem("milestoneos_transactions_v7");
+                  // Clear everything this app cached for the signed-in user (projects, transactions, role, tab...).
+                  Object.keys(localStorage)
+                    .filter((key) => key.startsWith("milestoneos_"))
+                    .forEach((key) => localStorage.removeItem(key));
                 } catch (_) {}
                 if (isSupabaseConfigured() && supabase) {
                   try {

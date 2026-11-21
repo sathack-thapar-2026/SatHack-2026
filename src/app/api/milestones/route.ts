@@ -1,37 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
+import { assertParticipant, requireCaller } from "@/server/auth";
+import { DomainError, errorResponse, readJson } from "@/server/errors";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { projectId, title, description, amount, dueDate, acceptanceCriteria } = body;
+    const caller = await requireCaller(req);
+    const body = await readJson(req);
 
-    if (!projectId || !title || !amount) {
-      return NextResponse.json(
-        { error: "projectId, title, and amount are required" },
-        { status: 400 }
-      );
+    const projectId = typeof body.projectId === "string" ? body.projectId : "";
+    const title = typeof body.title === "string" ? body.title.trim().slice(0, 200) : "";
+    if (!projectId || !title || body.amount === undefined || body.amount === null || body.amount === "") {
+      throw new DomainError(400, "projectId, title, and amount are required");
     }
 
-    const numericAmount = Number(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      return NextResponse.json(
-        { error: "amount must be a positive number" },
-        { status: 400 }
-      );
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000_000) {
+      throw new DomainError(400, "amount must be a positive number");
     }
 
-    const result = await db.addMilestone(projectId, {
-      title,
-      description: description || "Agreed deliverables milestone.",
-      amount: numericAmount,
-      dueDate,
-      acceptanceCriteria: Array.isArray(acceptanceCriteria) ? acceptanceCriteria : [],
-    });
+    const project = await db.getProjectById(projectId);
+    if (!project) throw new DomainError(404, "Project not found", "NOT_FOUND");
+    const roles = assertParticipant(project, caller);
 
-    if (!result) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
+    const criteria: string[] = (Array.isArray(body.acceptanceCriteria) ? body.acceptanceCriteria : [])
+      .filter((c: unknown): c is string => typeof c === "string" && c.trim().length > 0)
+      .slice(0, 25)
+      .map((c: string) => c.trim().slice(0, 300));
+
+    const result = await db.addMilestone(
+      projectId,
+      {
+        title,
+        description:
+          (typeof body.description === "string" && body.description.trim().slice(0, 2000)) ||
+          "Agreed deliverables milestone.",
+        amount: Math.round(amount * 100) / 100,
+        dueDate: typeof body.dueDate === "string" ? body.dueDate.slice(0, 100) : undefined,
+        acceptanceCriteria: criteria,
+      },
+      { name: caller.name, role: roles.isFreelancer ? "freelancer" : "client" }
+    );
+
+    if (!result) throw new DomainError(404, "Project not found", "NOT_FOUND");
 
     return NextResponse.json({
       success: true,
@@ -39,11 +50,7 @@ export async function POST(req: NextRequest) {
       milestone: result.milestone,
       project: result.project,
     });
-  } catch (err: any) {
-    console.error("Add milestone API error:", err);
-    return NextResponse.json(
-      { error: err.message || "Failed to create milestone" },
-      { status: 500 }
-    );
+  } catch (err) {
+    return errorResponse(err, "Failed to create milestone");
   }
 }

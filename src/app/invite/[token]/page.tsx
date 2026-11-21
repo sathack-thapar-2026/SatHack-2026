@@ -20,7 +20,7 @@ import {
   ArrowLeft,
   Sparkles,
 } from "lucide-react";
-import { useDashboard } from "@/lib/dashboard-store";
+import { DashboardProvider, useDashboard } from "@/lib/dashboard-store";
 import { ProjectContract, MilestoneOSUser, extractBaseCode } from "@/lib/dashboard-data";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -37,6 +37,7 @@ function InvitePageContent({ params }: InvitePageProps) {
     setRole,
     userProfiles,
     projects,
+    authUser,
     acceptInvitationByToken,
     showToast,
   } = useDashboard();
@@ -129,16 +130,15 @@ function InvitePageContent({ params }: InvitePageProps) {
 
   const roleMatches = role === targetRecipientRole;
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
+    // Accepting binds the contract to the signed-in account, so signed-out visitors sign in first.
+    if (!authUser) {
+      router.push(`/auth?returnUrl=${encodeURIComponent(`/invite/${token}`)}`);
+      return;
+    }
+
     setIsAccepting(true);
-    const result = acceptInvitationByToken(token, {
-      name: currentProfile.name,
-      email: currentProfile.email,
-      avatar: currentProfile.avatar,
-      milestoneOSId: currentProfile.milestoneOSId,
-      role,
-      companyOrTitle: (currentProfile as any).company || (currentProfile as any).title,
-    });
+    const result = await acceptInvitationByToken(token);
 
     if (result.success) {
       showToast(`Proposal accepted! Project "${project.title}" is now active.`, "success");
@@ -358,6 +358,7 @@ function InvitePageContent({ params }: InvitePageProps) {
 
 export default function InvitePage(props: InvitePageProps) {
   return (
+    <DashboardProvider>
     <Suspense
       fallback={
         <div className="min-h-screen bg-slate-50 dark:bg-[#070B14] flex items-center justify-center p-4">
@@ -370,5 +371,6 @@ export default function InvitePage(props: InvitePageProps) {
     >
       <InvitePageContent params={props.params} />
     </Suspense>
+    </DashboardProvider>
   );
 }

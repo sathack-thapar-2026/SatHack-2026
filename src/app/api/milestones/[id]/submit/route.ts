@@ -1,101 +1,120 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
 import { verifyMilestoneWithAI, generateHeuristicAudit } from "@/server/gemini";
-import { MilestoneSubmission, extractBaseCode, AIAssessment } from "@/lib/dashboard-data";
-import { getServerSupabase } from "@/server/supabase";
+import { MilestoneSubmission, AIAssessment, DeliverableAttachment, DeliverableLink } from "@/lib/dashboard-data";
+import { assertFreelancer, requireCaller } from "@/server/auth";
+import { DomainError, errorResponse, readJson } from "@/server/errors";
+import { newId } from "@/server/ids";
 
 export const maxDuration = 60;
+
+/** Upper bound for all uploaded file data (base64 text) in a single submission. */
+const MAX_ATTACHMENT_CHARS = 12_000_000;
+const MAX_ATTACHMENTS = 20;
+const MAX_LINKS = 20;
+
+function optionalHttpUrl(value: unknown, label: string): string {
+  if (value === undefined || value === null || value === "") return "";
+  if (typeof value !== "string") throw new DomainError(400, `${label} must be a link.`);
+  const trimmed = value.trim().slice(0, 2000);
+  if (!trimmed) return "";
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    throw new DomainError(400, `${label} must be a valid link starting with http:// or https://.`);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new DomainError(400, `${label} must be a valid link starting with http:// or https://.`);
+  }
+  return trimmed;
+}
+
+function sanitizeLinks(raw: unknown): DeliverableLink[] {
+  if (!Array.isArray(raw)) return [];
+  if (raw.length > MAX_LINKS) throw new DomainError(400, `You can attach at most ${MAX_LINKS} links.`);
+  const allowedTypes = ["photo", "design", "document", "cloud", "demo", "repo", "other"];
+  return raw
+    .filter((l: any) => l && typeof l === "object")
+    .map((l: any) => ({
+      title: typeof l.title === "string" ? l.title.trim().slice(0, 200) : "",
+      url: optionalHttpUrl(l.url, "Deliverable link"),
+      type: allowedTypes.includes(l.type) ? l.type : undefined,
+    }))
+    .filter((l) => l.url || l.title);
+}
+
+function sanitizeAttachments(raw: unknown): DeliverableAttachment[] {
+  if (!Array.isArray(raw)) return [];
+  if (raw.length > MAX_ATTACHMENTS) throw new DomainError(400, `You can upload at most ${MAX_ATTACHMENTS} files.`);
+
+  let totalChars = 0;
+  const out: DeliverableAttachment[] = raw
+    .filter((a: any) => a && typeof a === "object")
+    .map((a: any) => {
+      const dataUrl = typeof a.dataUrl === "string" ? a.dataUrl : undefined;
+      if (dataUrl && !dataUrl.startsWith("data:")) {
+        throw new DomainError(400, "Uploaded files must be sent as data URLs.");
+      }
+      const url = typeof a.url === "string" && a.url.startsWith("data:") ? a.url : undefined;
+      totalChars += (dataUrl?.length || 0) + (url && url !== dataUrl ? url.length : 0);
+      return {
+        name: typeof a.name === "string" ? a.name.slice(0, 200) : "file",
+        size: typeof a.size === "string" ? a.size.slice(0, 40) : "",
+        type: typeof a.type === "string" ? a.type.slice(0, 120) : "application/octet-stream",
+        dataUrl,
+        url,
+        uploadedAt: typeof a.uploadedAt === "string" ? a.uploadedAt.slice(0, 40) : undefined,
+      };
+    });
+
+  if (totalChars > MAX_ATTACHMENT_CHARS) {
+    throw new DomainError(413, "The uploaded files are too large. Keep the total under about 8 MB.", "TOO_LARGE");
+  }
+  return out;
+}
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const caller = await requireCaller(req);
     const { id: milestoneId } = await params;
-    const body = await req.json();
-    const { projectId, repoUrl, githubRepo, demoUrl, loomVideo, notes, deliverableLinks, attachments } = body;
+    const body = await readJson(req);
 
-    let callerId = body.userId || body.callerId || req.headers.get("x-user-id");
-    let callerEmail = body.userEmail || req.headers.get("x-user-email");
+    const projectId = typeof body.projectId === "string" ? body.projectId : "";
+    if (!projectId) throw new DomainError(400, "projectId is required");
 
-    // Verify caller session token if provided
-    const authHeader = req.headers.get("authorization");
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "").trim();
-      const supabase = getServerSupabase();
-      if (supabase) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser(token);
-          if (user) {
-            callerId = user.id;
-            callerEmail = user.email;
-          }
-        } catch (_) {}
-      }
-    }
-
-    if (!projectId) {
-      return NextResponse.json({ error: "projectId is required" }, { status: 400 });
-    }
-
-    const project = await db.getProjectById(projectId, undefined, true);
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-
-    // Strict Freelancer Authorization Check
-    const isDemo = Boolean(project.isDemo || body.isDemo);
-    const callerMsoId = body.milestoneOSId || req.headers.get("x-user-mso-id");
-    const callerBase = callerMsoId ? extractBaseCode(callerMsoId) : undefined;
-    const flBase = extractBaseCode(project.freelancer?.milestoneOSId);
-
-    const isRohanVerma = Boolean(
-      callerId === "253b60b8-a9e0-4d3d-96af-618f78c1bf80" ||
-      callerEmail === "rohan.verma@craftdev.io" ||
-      callerMsoId === "FL-2W8L41" ||
-      callerBase === "2W8L41"
-    );
-
-    const isProjectFreelancerRohan = Boolean(
-      project.freelancerId === "253b60b8-a9e0-4d3d-96af-618f78c1bf80" ||
-      project.freelancer?.id === "253b60b8-a9e0-4d3d-96af-618f78c1bf80" ||
-      project.freelancer?.email?.toLowerCase() === "rohan.verma@craftdev.io" ||
-      flBase === "2W8L41"
-    );
-
-    if (!isDemo && (callerId || callerEmail || callerMsoId)) {
-      const isFreelancer = Boolean(
-        (callerId && (project.freelancerId === callerId || project.freelancer?.id === callerId)) ||
-        (callerEmail && project.freelancer?.email?.toLowerCase() === callerEmail.toLowerCase()) ||
-        (callerMsoId && project.freelancer?.milestoneOSId?.toUpperCase() === callerMsoId.toUpperCase()) ||
-        (callerBase && flBase && callerBase === flBase) ||
-        (isRohanVerma && isProjectFreelancerRohan)
-      );
-      if (!isFreelancer) {
-        return NextResponse.json(
-          { error: "Unauthorized. Only the designated freelancer can submit deliverables for this milestone." },
-          { status: 403 }
-        );
-      }
-    }
+    const project = await db.getProjectById(projectId);
+    if (!project) throw new DomainError(404, "Project not found", "NOT_FOUND");
+    assertFreelancer(project, caller, "Unauthorized. Only the designated freelancer can submit deliverables for this milestone.");
 
     const milestone = project.milestones.find((m) => m.id === milestoneId);
-    if (!milestone) {
-      return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
+    if (!milestone) throw new DomainError(404, "Milestone not found", "NOT_FOUND");
+
+    // Fail fast (before spending an AI call) when the workflow does not allow a submission.
+    if (project.status === "awaiting_acceptance" || project.status === "draft" || project.status === "changes_requested") {
+      throw new DomainError(403, "Work submissions are locked until the project proposal is accepted and active.");
+    }
+    if (project.status === "rejected" || project.status === "archived" || project.status === "completed") {
+      throw new DomainError(409, `This project is ${project.status} and can no longer receive submissions.`);
+    }
+    if (milestone.status === "paid" || milestone.status === "approved") {
+      throw new DomainError(409, "This milestone has already been approved and can no longer receive submissions.");
     }
 
-    // Work submissions only locked when project proposal is still awaiting acceptance or draft
-    if (project.status === "awaiting_acceptance" || project.status === "draft") {
-      return NextResponse.json(
-        { error: "Work submissions are locked until the project proposal is accepted and active." },
-        { status: 403 }
-      );
-    }
-
-    const repo = githubRepo || repoUrl || "";
+    const repo = optionalHttpUrl(body.githubRepo || body.repoUrl, "Repository link");
+    const demoUrl = optionalHttpUrl(body.demoUrl, "Demo link");
+    const loomVideo = optionalHttpUrl(body.loomVideo, "Video link");
+    const deliverableLinks = sanitizeLinks(body.deliverableLinks);
+    const attachments = sanitizeAttachments(body.attachments);
+    const notes =
+      (typeof body.notes === "string" && body.notes.trim().slice(0, 5000)) ||
+      "Submitted deliverable package for milestone review.";
 
     const submission: MilestoneSubmission = {
-      id: `sub_${Date.now()}`,
+      id: newId("sub"),
       version: (milestone.submissions?.length || 0) + 1,
       submittedAt: new Date().toLocaleDateString("en-US", {
         month: "short",
@@ -104,61 +123,50 @@ export async function POST(
       }),
       submittedBy: project.freelancer.name,
       githubRepo: repo,
-      demoUrl: demoUrl || "",
-      loomVideo: loomVideo || "",
-      notes: notes || "Submitted deliverable package for milestone review.",
-      deliverableLinks: deliverableLinks || [],
-      attachments: attachments || [],
+      demoUrl,
+      loomVideo,
+      notes,
+      deliverableLinks,
+      attachments,
+    };
+
+    const auditInput = {
+      milestoneTitle: milestone.title,
+      milestoneDescription: milestone.description,
+      acceptanceCriteria: milestone.acceptanceCriteria || [],
+      submission: {
+        githubRepo: repo,
+        demoUrl,
+        loomVideo,
+        notes: submission.notes,
+        deliverableLinks: submission.deliverableLinks,
+        attachments: submission.attachments,
+      },
     };
 
     // Run AI Acceptance Verification in real-time (with immediate resilient fallback)
     let audit: AIAssessment;
     try {
-      audit = await verifyMilestoneWithAI({
-        milestoneTitle: milestone.title,
-        milestoneDescription: milestone.description,
-        acceptanceCriteria: milestone.acceptanceCriteria || [],
-        submission: {
-          githubRepo: repo,
-          demoUrl,
-          loomVideo,
-          notes: submission.notes,
-          deliverableLinks: submission.deliverableLinks,
-          attachments: submission.attachments,
-        },
-      });
-    } catch (_) {
-      audit = generateHeuristicAudit({
-        milestoneTitle: milestone.title,
-        milestoneDescription: milestone.description,
-        acceptanceCriteria: milestone.acceptanceCriteria || [],
-        submission: {
-          githubRepo: repo,
-          demoUrl,
-          loomVideo,
-          notes: submission.notes,
-          deliverableLinks: submission.deliverableLinks,
-          attachments: submission.attachments,
-        },
-      });
+      audit = await verifyMilestoneWithAI(auditInput);
+    } catch (err) {
+      console.warn("AI verification failed, using heuristic audit:", err);
+      audit = generateHeuristicAudit(auditInput);
     }
 
     submission.aiAssessment = audit;
 
     const result = await db.submitMilestoneWork(projectId, milestoneId, submission, audit);
+    if (!result) throw new DomainError(404, "Project not found", "NOT_FOUND");
 
     return NextResponse.json({
       success: true,
       message: "Work submitted and verified by MilestoneOS AI Engine.",
       submission,
       audit,
-      milestone: result?.milestone,
-      project: result?.project,
+      milestone: result.milestone,
+      project: result.project,
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to submit milestone work" },
-      { status: 500 }
-    );
+  } catch (err) {
+    return errorResponse(err, "Failed to submit milestone work");
   }
 }

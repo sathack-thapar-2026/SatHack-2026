@@ -1,87 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
-import { getServerSupabase } from "@/server/supabase";
+import { assertClient, requireCaller } from "@/server/auth";
+import { DomainError, errorResponse, readJson } from "@/server/errors";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const caller = await requireCaller(req);
     const { id: milestoneId } = await params;
-    const body = await req.json();
-    const { projectId, action, feedback } = body;
+    const body = await readJson(req);
 
-    let callerId = body.userId || body.callerId || req.headers.get("x-user-id");
-    let callerEmail = body.userEmail || req.headers.get("x-user-email");
-
-    // Verify caller session token if provided
-    const authHeader = req.headers.get("authorization");
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "").trim();
-      const supabase = getServerSupabase();
-      if (supabase) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser(token);
-          if (user) {
-            callerId = user.id;
-            callerEmail = user.email;
-          }
-        } catch (_) {}
-      }
-    }
+    const projectId = typeof body.projectId === "string" ? body.projectId : "";
+    const action = body.action;
+    const feedback = typeof body.feedback === "string" ? body.feedback.trim().slice(0, 2000) : undefined;
 
     if (!projectId || !action) {
-      return NextResponse.json(
-        { error: "projectId and action ('approve' | 'request_changes') are required" },
-        { status: 400 }
-      );
+      throw new DomainError(400, "projectId and action ('approve' | 'request_changes') are required");
     }
-
     if (action !== "approve" && action !== "request_changes") {
-      return NextResponse.json(
-        { error: "action must be either 'approve' or 'request_changes'" },
-        { status: 400 }
-      );
+      throw new DomainError(400, "action must be either 'approve' or 'request_changes'");
     }
 
-    // Retrieve internal project record
-    const project = await db.getProjectById(projectId, undefined, true);
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    const project = await db.getProjectById(projectId);
+    if (!project) throw new DomainError(404, "Project not found", "NOT_FOUND");
+
+    // Only the client of this project may approve or request changes.
+    assertClient(
+      project,
+      caller,
+      "Unauthorized. Only the designated client can approve or request changes on milestone deliverables."
+    );
+
+    if (!project.milestones.some((m) => m.id === milestoneId)) {
+      throw new DomainError(404, "Milestone not found", "NOT_FOUND");
     }
 
-    // Strict Client Authorization Check
-    const isDemo = Boolean(project.isDemo);
-    if (!isDemo && (callerId || callerEmail)) {
-      const isClient = Boolean(
-        (callerId && (project.clientId === callerId || project.client?.id === callerId)) ||
-        (callerEmail && project.client?.email?.toLowerCase() === callerEmail.toLowerCase())
-      );
-      if (!isClient) {
-        return NextResponse.json(
-          { error: "Unauthorized. Only the designated client can approve or request changes on milestone deliverables." },
-          { status: 403 }
-        );
-      }
-    }
-
-    const milestone = project.milestones.find((m) => m.id === milestoneId);
-    if (!milestone) {
-      return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
-    }
-
+    // db.reviewMilestone enforces that the milestone actually has submitted work to review.
     const result = await db.reviewMilestone(projectId, milestoneId, action, feedback);
+    if (!result) throw new DomainError(404, "Project not found", "NOT_FOUND");
 
     return NextResponse.json({
       success: true,
       action,
-      milestone: result?.milestone,
-      project: result?.project,
+      milestone: result.milestone,
+      project: result.project,
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to submit milestone review" },
-      { status: 500 }
-    );
+  } catch (err) {
+    return errorResponse(err, "Failed to submit milestone review");
   }
 }

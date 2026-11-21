@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DashboardProvider, useDashboard } from "@/lib/dashboard-store";
 import { Milestone, ProjectContract } from "@/lib/dashboard-data";
 import Sidebar from "@/components/dashboard/Sidebar";
@@ -41,7 +41,10 @@ function DashboardInner() {
     toast,
     hideToast,
     alertState,
+    authUser,
+    isLoaded,
   } = useDashboard();
+  const router = useRouter();
 
   // Navigation & Drawer states
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -103,6 +106,21 @@ function DashboardInner() {
     project: ProjectContract;
     milestone: Milestone;
   } | null>(null);
+
+  // The dashboard only exists for signed-in users: once the sign-in check finishes, send everyone else to /auth.
+  useEffect(() => {
+    if (isLoaded && !authUser) {
+      router.replace("/auth?returnUrl=" + encodeURIComponent("/dashboard"));
+    }
+  }, [isLoaded, authUser, router]);
+
+  if (isLoaded && !authUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFD] dark:bg-[#070B14] text-slate-500 text-xs font-mono">
+        Redirecting to sign in...
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen bg-[#F8FAFD] dark:bg-[#070B14] text-slate-900 dark:text-slate-100 flex transition-colors duration-200">

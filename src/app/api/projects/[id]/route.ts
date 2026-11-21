@@ -1,54 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/server/db";
-import { getServerSupabase } from "@/server/supabase";
+import { assertParticipant, requireCaller } from "@/server/auth";
+import { DomainError, errorResponse, readJson } from "@/server/errors";
+import type { ProjectContract } from "@/lib/dashboard-data";
+
+function cleanText(value: unknown, max: number): string | undefined {
+  if (typeof value !== "string") return undefined;
+  return value.trim().slice(0, max);
+}
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const caller = await requireCaller(req);
     const { id } = await params;
-    const { searchParams } = new URL(req.url);
-    const isDemo = searchParams.get("isDemo") === "true";
-    let userId = searchParams.get("userId") || req.headers.get("x-user-id") || undefined;
-    let userEmail = searchParams.get("userEmail") || req.headers.get("x-user-email") || undefined;
-    let milestoneOSId = searchParams.get("milestoneOSId") || req.headers.get("x-milestoneos-id") || undefined;
 
-    // Check Authorization header for Supabase Bearer Token
-    const authHeader = req.headers.get("authorization");
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "").trim();
-      const supabase = getServerSupabase();
-      if (supabase) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser(token);
-          if (user) {
-            userId = user.id;
-            userEmail = user.email;
-          }
-        } catch (_) {}
-      }
-    }
-
-    const authUser = (userId || userEmail || milestoneOSId || isDemo)
-      ? { id: userId, email: userEmail, milestoneOSId, isDemo }
-      : undefined;
-
-    const project = await db.getProjectById(id, authUser);
-
+    const project = await db.getProjectById(id);
     if (!project) {
-      return NextResponse.json(
-        { error: "Project not found or you are not authorized to view it." },
-        { status: 404 }
-      );
+      throw new DomainError(404, "Project not found or you are not authorized to view it.", "NOT_FOUND");
     }
+    assertParticipant(project, caller);
 
     return NextResponse.json({ success: true, project });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to fetch project" },
-      { status: 500 }
-    );
+  } catch (err) {
+    return errorResponse(err, "Failed to fetch project");
   }
 }
 
@@ -57,54 +34,49 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const caller = await requireCaller(req);
     const { id } = await params;
-    const body = await req.json();
+    const body = await readJson(req);
 
-    const existing = await db.getProjectById(id, undefined, true);
-    if (!existing) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    const existing = await db.getProjectById(id);
+    if (!existing) throw new DomainError(404, "Project not found", "NOT_FOUND");
+    assertParticipant(existing, caller);
+
+    // Only plain descriptive fields can be edited here. Money, participants, ids, milestones
+    // and workflow state are changed exclusively through their dedicated, rule-checked endpoints.
+    const updates: Partial<ProjectContract> = {};
+
+    const title = cleanText(body.title, 200);
+    if (title !== undefined) {
+      if (!title) throw new DomainError(400, "The project title cannot be empty.");
+      updates.title = title;
     }
+    const description = cleanText(body.description, 5000);
+    if (description !== undefined) updates.description = description;
+    const category = cleanText(body.category, 100);
+    if (category) updates.category = category;
+    const targetDeadline = cleanText(body.targetDeadline, 100);
+    if (targetDeadline) updates.targetDeadline = targetDeadline;
 
-    let callerId = body.userId || body.callerId || req.headers.get("x-user-id");
-    let callerEmail = body.userEmail || req.headers.get("x-user-email");
-    const authHeader = req.headers.get("authorization");
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "").trim();
-      const supabase = getServerSupabase();
-      if (supabase) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser(token);
-          if (user) {
-            callerId = user.id;
-            callerEmail = user.email;
-          }
-        } catch (_) {}
-      }
-    }
-
-    if (!existing.isDemo) {
-      const isAuthorized = Boolean(
-        (callerId && (existing.clientId === callerId || existing.freelancerId === callerId || existing.client?.id === callerId || existing.freelancer?.id === callerId)) ||
-        (callerEmail && (existing.client?.email?.toLowerCase() === callerEmail.toLowerCase() || existing.freelancer?.email?.toLowerCase() === callerEmail.toLowerCase()))
-      );
-      if (!isAuthorized) {
-        return NextResponse.json(
-          { error: "Unauthorized. Only authorized project participants can update this project." },
-          { status: 403 }
+    if (body.status !== undefined && body.status !== existing.status) {
+      if (body.status === "archived") {
+        updates.status = "archived";
+      } else if (body.status === "active" && existing.status === "archived" && existing.proposalStatus === "accepted") {
+        updates.status = "active"; // restore an archived, previously accepted contract
+      } else {
+        throw new DomainError(
+          400,
+          "Project status is managed by the proposal and payment workflow and cannot be set directly.",
+          "STATUS_LOCKED"
         );
       }
     }
 
-    const updated = await db.updateProject(id, body);
-    if (!updated) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
+    const updated = await db.updateProject(id, updates);
+    if (!updated) throw new DomainError(404, "Project not found", "NOT_FOUND");
 
     return NextResponse.json({ success: true, project: updated });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || "Failed to update project" },
-      { status: 500 }
-    );
+  } catch (err) {
+    return errorResponse(err, "Failed to update project");
   }
 }

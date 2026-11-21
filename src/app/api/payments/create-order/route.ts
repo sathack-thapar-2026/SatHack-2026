@@ -1,104 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPaymentOrder } from "@/server/payments";
-import { db } from "@/server/db";
-import { getServerSupabase } from "@/server/supabase";
-import { extractBaseCode } from "@/lib/dashboard-data";
+import { createPaymentOrder, isSupportedCheckoutCurrency } from "@/server/payments";
+import { db, PAYABLE_MILESTONE_STATUSES } from "@/server/db";
+import { assertClient, requireCaller } from "@/server/auth";
+import { DomainError, errorResponse, readJson } from "@/server/errors";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { projectId, milestoneId } = body;
-    let callerId = body.userId || body.payerId || body.callerId || req.headers.get("x-user-id");
-    let callerEmail = body.userEmail || req.headers.get("x-user-email");
-    let callerMsoId = body.milestoneOSId || req.headers.get("x-user-mso-id");
-
-    // Verify caller session token if provided
-    const authHeader = req.headers.get("authorization");
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "").trim();
-      const supabase = getServerSupabase();
-      if (supabase) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser(token);
-          if (user) {
-            callerId = user.id;
-            callerEmail = user.email;
-          }
-        } catch (_) {}
-      }
-    }
+    // The payer is ALWAYS the verified signed-in user. Identity in the body/headers is ignored.
+    const caller = await requireCaller(req);
+    const body = await readJson(req);
+    const projectId = typeof body.projectId === "string" ? body.projectId : "";
+    const milestoneId = typeof body.milestoneId === "string" ? body.milestoneId : "";
 
     if (!projectId || !milestoneId) {
-      return NextResponse.json(
-        { error: "projectId and milestoneId are required" },
-        { status: 400 }
-      );
+      throw new DomainError(400, "projectId and milestoneId are required");
     }
 
-    const project = await db.getProjectById(projectId, undefined, true);
-    if (!project) {
-      return NextResponse.json({ error: "Project not found in contract database" }, { status: 404 });
-    }
+    const project = await db.getProjectById(projectId);
+    if (!project) throw new DomainError(404, "Project not found in contract database", "NOT_FOUND");
 
-    // Security check: Only the designated client can fund or pay milestone contracts
-    const clientId = project.clientId || project.client?.id;
-    const clientEmail = project.client?.email?.toLowerCase();
-    const clientMso = project.client?.milestoneOSId || (project as any).client_mso_id;
-    const clientBase = extractBaseCode(clientMso);
-    const callerBase = extractBaseCode(callerMsoId) || extractBaseCode(callerId);
-
-    const isClientCaller = Boolean(
-      (callerId && (callerId === clientId || callerId === clientMso)) ||
-      (callerEmail && clientEmail && callerEmail.toLowerCase() === clientEmail) ||
-      (callerMsoId && clientMso && callerMsoId.toUpperCase() === clientMso.toUpperCase()) ||
-      (callerBase && clientBase && callerBase === clientBase)
+    assertClient(
+      project,
+      caller,
+      "Unauthorized. Only the designated client organization can initiate payments for this project."
     );
 
-    if (!isClientCaller && !project.isDemo) {
-      return NextResponse.json(
-        { error: "Unauthorized. Only the designated client organization can initiate payments for this project." },
-        { status: 403 }
-      );
+    if (project.status !== "active") {
+      throw new DomainError(409, "Payments can only be made on an active, accepted contract.", "PROJECT_NOT_ACTIVE");
     }
 
     const milestone = project.milestones.find((m) => m.id === milestoneId);
-    if (!milestone) {
-      return NextResponse.json({ error: "Milestone not found in project" }, { status: 404 });
-    }
+    if (!milestone) throw new DomainError(404, "Milestone not found in project", "NOT_FOUND");
 
-    // Security check: Prevent creating orders for already settled milestones
     if (milestone.status === "paid") {
-      return NextResponse.json(
-        { error: "Milestone has already been paid and settled." },
-        { status: 400 }
-      );
+      throw new DomainError(400, "Milestone has already been paid and settled.", "ALREADY_PAID");
+    }
+    if (!PAYABLE_MILESTONE_STATUSES.includes(milestone.status)) {
+      throw new DomainError(409, "Approve the delivered work before releasing payment for this milestone.", "NOT_APPROVED");
     }
 
-    // Security check: Amount is strictly derived from the verified server database contract.
+    // Amount is strictly derived from the verified server-side contract.
     // Client-supplied amounts are deliberately ignored to prevent price tampering.
     const contractAmount = milestone.amount;
-    const contractCurrency = (milestone.currency || project.currency || "USD").toUpperCase();
+    const contractCurrency = (milestone.currency || project.currency || "USD").trim().toUpperCase();
 
     if (!contractAmount || contractAmount <= 0) {
-      return NextResponse.json(
-        { error: "Milestone contract amount must be greater than zero." },
-        { status: 400 }
-      );
+      throw new DomainError(400, "Milestone contract amount must be greater than zero.");
     }
 
-    // Payments API does not support INR directly for checkout.
-    // Per platform requirements, do not silently convert or assume exchange rates.
-    const normalizedCurrency = contractCurrency.trim().toUpperCase();
-    if (
-      normalizedCurrency === "INR" ||
-      normalizedCurrency === "₹" ||
-      normalizedCurrency === "RUPEE" ||
-      normalizedCurrency === "RUPEES"
-    ) {
+    // Do not silently convert currencies: unsupported currencies must be changed before payment.
+    if (!isSupportedCheckoutCurrency(contractCurrency)) {
+      const isInr = ["INR", "₹", "RUPEE", "RUPEES"].includes(contractCurrency);
       return NextResponse.json(
         {
-          error:
-            "Secure checkout does not support INR (Indian Rupee) directly. Escrow milestone contracts must be settled in supported payment currencies (USD). Please adjust the milestone currency to USD.",
+          error: isInr
+            ? "Secure checkout does not support INR (Indian Rupee) directly. Escrow milestone contracts must be settled in supported currencies (USD). Please adjust the milestone currency to USD."
+            : `Secure checkout does not support ${contractCurrency}. Please adjust the milestone currency to USD.`,
           currency: contractCurrency,
           isUnsupportedCurrency: true,
         },
@@ -127,11 +84,7 @@ export async function POST(req: NextRequest) {
         orderCurrency: contractCurrency,
       },
     });
-  } catch (err: any) {
-    console.error("Create Order API Error:", err);
-    return NextResponse.json(
-      { error: err.message || "Failed to create Secure Payments order" },
-      { status: 500 }
-    );
+  } catch (err) {
+    return errorResponse(err, "Failed to create payment order");
   }
 }

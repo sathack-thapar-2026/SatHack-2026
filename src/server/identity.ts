@@ -21,18 +21,27 @@ export type IdentityResolutionResult =
   | { success: false; error: string; code: "INVALID_FORMAT" | "NOT_FOUND" | "ROLE_MISMATCH" | "SELF_ASSIGNMENT" };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const BASE_CODE_REGEX = /^[A-Z0-9]{6}$/;
+const FULL_ID_REGEX = /^(?:CL|FL|MSO)-[A-Z0-9]{6}$/;
+
+/** Escapes LIKE/ILIKE wildcards so user input can only ever match literally. */
+export function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
 
 /**
  * Universal Central Identity Resolution Function.
  *
  * Given an input (e.g. FL-2W8L41, CL-Q7EWTG, MSO-2W8L41, base code, email, or UUID),
  * resolves against public.profiles in Supabase PostgreSQL:
- * 1. Normalizes the entered ID.
- * 2. Queries public.profiles.milestone_os_id, id, or email.
+ * 1. Normalizes the entered ID (anything that is not a strict ID/email/UUID is rejected).
+ * 2. Queries public.profiles by id, email, or milestone_os_id.
  * 3. Validates that the profile exists.
- * 4. Strictly validates that the profile has the required role (client or freelancer).
- * 5. Strictly prevents self-assignment (proposer cannot be recipient).
- * 6. Returns the exact Supabase Auth UUID and profile attributes.
+ * 4. Prevents self-assignment (proposer cannot be recipient).
+ * 5. Returns the exact Supabase Auth UUID and profile attributes.
+ *
+ * Every MilestoneOS account owns both a client ID (CL-) and a freelancer ID (FL-)
+ * derived from one shared base code, so any account can act on either side.
  */
 export async function resolveCounterpartyIdentity(params: {
   identifier: string;
@@ -54,7 +63,12 @@ export async function resolveCounterpartyIdentity(params: {
   const cleanInput = rawInput.toUpperCase();
   const isEmail = rawInput.includes("@");
   const isUUID = UUID_REGEX.test(rawInput);
-  const baseCode = isEmail || isUUID ? null : extractBaseCode(cleanInput);
+
+  let baseCode: string | null = null;
+  if (!isEmail && !isUUID) {
+    const candidate = extractBaseCode(cleanInput);
+    baseCode = BASE_CODE_REGEX.test(candidate) ? candidate : null;
+  }
 
   // Validate format and role prefix if user provided a typed prefix
   if (expectedRole === "freelancer" && cleanInput.startsWith("CL-")) {
@@ -70,6 +84,15 @@ export async function resolveCounterpartyIdentity(params: {
       success: false,
       error: `You entered a Freelancer ID ('${rawInput}'). When proposing to a client, you must enter the Client's ID starting with 'CL-' (e.g. CL-${baseCode || "Q7EWTG"}).`,
       code: "ROLE_MISMATCH",
+    };
+  }
+
+  // Anything that is not a UUID, an email, or a well-formed MilestoneOS ID cannot match an account.
+  if (!isUUID && !isEmail && !baseCode && !FULL_ID_REGEX.test(cleanInput)) {
+    return {
+      success: false,
+      error: `"${rawInput}" is not a valid account ID. Use an ID like ${expectedRole === "freelancer" ? "FL-2W8L41" : "CL-Q7EWTG"}.`,
+      code: "INVALID_FORMAT",
     };
   }
 
@@ -100,22 +123,24 @@ export async function resolveCounterpartyIdentity(params: {
     if (!error && data) profile = data;
   }
 
-  // 3. Lookup by Base Code in milestone_os_id
+  // 3. Lookup by Base Code in milestone_os_id (baseCode is strictly 6 alphanumerics, so no wildcards)
   if (!profile && baseCode) {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .ilike("milestone_os_id", `%${baseCode}%`)
+      .limit(1)
       .maybeSingle();
     if (!error && data) profile = data;
   }
 
-  // 4. Exact match on milestone_os_id string
-  if (!profile) {
+  // 4. Exact match on the full milestone_os_id string (wildcards escaped)
+  if (!profile && FULL_ID_REGEX.test(cleanInput)) {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .ilike("milestone_os_id", cleanInput)
+      .ilike("milestone_os_id", escapeLike(cleanInput))
+      .limit(1)
       .maybeSingle();
     if (!error && data) profile = data;
   }
@@ -132,8 +157,8 @@ export async function resolveCounterpartyIdentity(params: {
   const cleanProposerId = proposerId?.trim().toLowerCase();
   const cleanProposerEmail = proposerEmail?.trim().toLowerCase();
   if (
-    (cleanProposerId && profile.id.toLowerCase() === cleanProposerId) ||
-    (cleanProposerEmail && profile.email.toLowerCase() === cleanProposerEmail)
+    (cleanProposerId && String(profile.id).toLowerCase() === cleanProposerId) ||
+    (cleanProposerEmail && String(profile.email || "").toLowerCase() === cleanProposerEmail)
   ) {
     return {
       success: false,
@@ -142,31 +167,7 @@ export async function resolveCounterpartyIdentity(params: {
     };
   }
 
-  // Role validation
-  const resolvedBase = extractBaseCode(profile.milestone_os_id) || profile.id.slice(0, 6).toUpperCase();
-  const isMultiRole =
-    (profile.role || "").toLowerCase() === "both" ||
-    resolvedBase === "2W8L41" ||
-    profile.email?.toLowerCase() === "rohan.verma@craftdev.io";
-
-  const profileRole = isMultiRole ? "both" : (profile.role || "both").toLowerCase();
-  if (expectedRole === "freelancer") {
-    if (profileRole !== "freelancer" && profileRole !== "both") {
-      return {
-        success: false,
-        error: `Account "${profile.full_name}" (${formatClientId(resolvedBase)}) is registered as a Client, not a Freelancer. Only registered freelancers can receive project requests.`,
-        code: "ROLE_MISMATCH",
-      };
-    }
-  } else if (expectedRole === "client") {
-    if (profileRole !== "client" && profileRole !== "both") {
-      return {
-        success: false,
-        error: `Account "${profile.full_name}" (${formatFreelancerId(resolvedBase)}) is registered as a Freelancer, not a Client. Only registered clients can receive project proposals.`,
-        code: "ROLE_MISMATCH",
-      };
-    }
-  }
+  const resolvedBase = extractBaseCode(profile.milestone_os_id) || String(profile.id).slice(0, 6).toUpperCase();
 
   const user: ResolvedUserIdentity = {
     id: profile.id,
@@ -176,9 +177,9 @@ export async function resolveCounterpartyIdentity(params: {
     milestoneOSId: expectedRole === "freelancer" ? formatFreelancerId(resolvedBase) : formatClientId(resolvedBase),
     name: profile.full_name || "Registered User",
     email: profile.email,
-    role: isMultiRole ? "both" : (profile.role || expectedRole),
-    company: profile.company || (expectedRole === "client" ? (isMultiRole ? "CraftDev Engineering" : "Client Organization") : undefined),
-    title: profile.title || (expectedRole === "freelancer" ? "Senior Full-Stack Engineer" : undefined),
+    role: "both",
+    company: profile.company || (expectedRole === "client" ? "Client Organization" : undefined),
+    title: profile.title || (expectedRole === "freelancer" ? "Independent Specialist" : undefined),
     avatar: profile.avatar || (profile.full_name ? profile.full_name.slice(0, 2).toUpperCase() : "US"),
     rating: Number(profile.rating || 5.0),
   };

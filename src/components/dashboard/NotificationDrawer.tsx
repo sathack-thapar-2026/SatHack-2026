@@ -2,6 +2,14 @@
 
 import { useDashboard } from "@/lib/dashboard-store";
 import { ProjectContract } from "@/lib/dashboard-data";
+import { authFetch } from "@/lib/api-client";
+
+/** Server timestamps are ISO strings; local ones are already text such as "Just now". */
+function formatNotificationTime(value: string): string {
+  const d = new Date(value);
+  if (!value || Number.isNaN(d.getTime()) || !/\d{4}-\d{2}-\d{2}/.test(value)) return value;
+  return d.toLocaleString("en-US", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
 import {
   X,
   CheckCircle2,
@@ -52,7 +60,7 @@ export default function NotificationDrawer({
     let project = notif.projectId ? projects.find((p) => p.id === notif.projectId) : null;
     if (!project && notif.projectId) {
       try {
-        const res = await fetch(`/api/projects/${notif.projectId}?userId=${encodeURIComponent(authUser?.id || "")}`);
+        const res = await authFetch(`/api/projects/${notif.projectId}`);
         const data = await res.json();
         if (data.success && data.project) {
           project = data.project;
@@ -212,7 +220,7 @@ export default function NotificationDrawer({
                           </h4>
                           <span className="text-[10px] text-slate-400 shrink-0 flex items-center gap-1">
                             <Clock className="h-2.5 w-2.5" />
-                            {notif.timestamp}
+                            {formatNotificationTime(notif.timestamp)}
                           </span>
                         </div>
 

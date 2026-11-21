@@ -31,6 +31,7 @@ import {
 import { Milestone, ProjectContract, getFriendlyCriterionStatus, AIAssessment, formatCurrency } from "@/lib/dashboard-data";
 import { GitHubIcon, PaymentIcon } from "./icons";
 import { useDashboard } from "@/lib/dashboard-store";
+import { authFetch } from "@/lib/api-client";
 
 interface AuditModalProps {
   project: ProjectContract;
@@ -89,13 +90,12 @@ export default function AuditModal({
         setLoadingStep("3. Cross-checking verified evidence vs unverified assumptions...");
       }, 1500);
 
-      const res = await fetch("/api/ai/verify-milestone", {
+      // The server audits the work it has stored; the submission is not sent from the browser.
+      const res = await authFetch("/api/ai/verify-milestone", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           projectId: project.id,
           milestoneId: milestone.id,
-          submission: latestSubmission,
           forceRefresh,
         }),
       });
@@ -668,8 +668,11 @@ export default function AuditModal({
 
                     <button
                       type="button"
-                      onClick={() => {
-                        approveMilestone(project.id, milestone.id);
+                      onClick={async () => {
+                        // Wait for the server to record the approval before opening checkout,
+                        // because a payment can only be started for an approved milestone.
+                        const approved = await approveMilestone(project.id, milestone.id);
+                        if (!approved) return;
                         onClose();
                         if (onOpenPaymentModal) {
                           onOpenPaymentModal();

@@ -26,12 +26,16 @@ export function hasGeminiKey(): boolean {
   return Boolean(key && key !== "your_gemini_api_key_here");
 }
 
-const GEMINI_MODELS = [
+export const GEMINI_MODELS = [
   "gemini-3.8-flash",
   "gemini-flash-latest",
   "gemini-flash-lite-latest",
   "gemini-2.5-flash",
 ];
+
+/** Time budget for ONE model attempt, and for the whole fallback chain. */
+const GEMINI_ATTEMPT_TIMEOUT_MS = 12_000;
+const GEMINI_TOTAL_TIMEOUT_MS = 20_000;
 
 export interface GeminiCallResult {
   data: any | null;
@@ -109,15 +113,22 @@ async function requestGeminiJson(
   const parts = typeof promptOrParts === "string" ? [{ text: promptOrParts }] : promptOrParts;
   let isQuotaExceeded = false;
   let lastError = "";
+  const deadline = Date.now() + GEMINI_TOTAL_TIMEOUT_MS;
 
   for (const model of GEMINI_MODELS) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 500) {
+      lastError = lastError || "Gemini did not respond in time.";
+      break;
+    }
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          signal: AbortSignal.timeout(3000),
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          // Aborting here also cancels the in-flight request, so a slow model never keeps running unseen.
+          signal: AbortSignal.timeout(Math.min(GEMINI_ATTEMPT_TIMEOUT_MS, remaining)),
           body: JSON.stringify({
             contents: [{ parts }],
             generationConfig: {
@@ -353,79 +364,110 @@ Return STRICTLY valid JSON conforming to this schema:
             checks.push({
               name: "Deliverable Assets & Links",
               passed: true,
-              detail: `${submission.deliverableLinks.length} asset link(s) inspected`,
+              detail: `${submission.deliverableLinks.length} asset link(s) provided (not opened by the AI)`,
             });
           }
           if (submission.githubRepo) {
             checks.push({
-              name: "Repository Integration",
+              name: "Repository Link",
               passed: true,
-              detail: "Code repository link verified",
+              detail: "Code repository link provided (contents not inspected)",
             });
           }
           if (submission.demoUrl) {
             checks.push({
               name: "Live Staging Preview",
               passed: true,
-              detail: "Interactive preview link verified",
+              detail: "Preview link provided (not opened by the AI)",
             });
           }
           if (submission.loomVideo) {
             checks.push({
               name: "Walkthrough Video",
               passed: true,
-              detail: "Video walkthrough attached",
+              detail: "Video walkthrough attached (not watched by the AI)",
             });
           }
+
+          // Validate every field instead of silently defaulting to a passing result.
+          const VALID_STATUS = ["approved", "changes_requested", "needs_verification"] as const;
+          const VALID_CRITERION = ["met", "missing", "needs_manual_review"] as const;
+          const aiCriteria: any[] = Array.isArray(parsed.criteria) ? parsed.criteria : [];
+
+          const toCriterion = (c: any, base?: AcceptanceCriterion, idx = 0): AcceptanceCriterion => ({
+            id: base?.id || c?.id || `crit_${idx}`,
+            title: base?.title || c?.title || "Requirement",
+            description: base?.description || c?.description || "",
+            status: (VALID_CRITERION as readonly string[]).includes(c?.status) ? c.status : "needs_manual_review",
+            evidence: c?.evidence || "The AI did not report evidence for this requirement.",
+            aiNotes: c?.aiNotes || "Please review this requirement manually.",
+          });
+
+          const criteria: AcceptanceCriterion[] =
+            acceptanceCriteria.length > 0
+              ? acceptanceCriteria.map((crit, idx) =>
+                  toCriterion(aiCriteria.find((c) => c?.id === crit.id) || aiCriteria[idx], crit, idx)
+                )
+              : aiCriteria.map((c, idx) => toCriterion(c, undefined, idx));
+
+          const metCount = criteria.filter((c) => c.status === "met").length;
+          const missingCount = criteria.filter((c) => c.status === "missing").length;
+          const scoreFromAi = Number(parsed.overallScore);
+          const overallScore = Number.isFinite(scoreFromAi)
+            ? Math.min(100, Math.max(0, Math.round(scoreFromAi)))
+            : criteria.length > 0
+            ? Math.round((metCount / criteria.length) * 100)
+            : 0;
+          const status: AIAssessment["status"] = (VALID_STATUS as readonly string[]).includes(parsed.status)
+            ? parsed.status
+            : missingCount > 0
+            ? "changes_requested"
+            : "needs_verification";
+          const qualityScoreRaw = Number(parsed.qualityScore);
+
           checks.push({
             name: "Acceptance Criteria Alignment",
-            passed: (parsed.status || "approved") !== "changes_requested",
+            passed: status !== "changes_requested",
             detail:
-              (parsed.status || "approved") === "approved"
+              status === "approved"
                 ? "All milestone criteria met"
-                : "Items require review",
+                : status === "changes_requested"
+                ? "Some criteria are missing or incomplete"
+                : "Items require manual review",
           });
 
           return {
-            overallScore: Math.min(100, Math.max(0, Math.round(parsed.overallScore || 88))),
+            overallScore,
             summary:
               parsed.summary ||
               "Automated evaluation completed against agreed milestone acceptance criteria.",
-            status: parsed.status || "approved",
+            status,
             verifiedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             isDemonstration: false,
-            qualityScore: parsed.qualityScore || 85,
-            qualityNotes:
-              parsed.qualityNotes || "Deliverables align well with specified milestone requirements.",
-            criteria: (parsed.criteria || []).map((c: any, idx: number) => ({
-              id: c.id || acceptanceCriteria[idx]?.id || `crit_${idx}`,
-              title: c.title || acceptanceCriteria[idx]?.title || "Requirement",
-              description: c.description || acceptanceCriteria[idx]?.description || "",
-              status: c.status || "met",
-              evidence: c.evidence || "Verified in deliverable package.",
-              aiNotes: c.aiNotes || "Meets scope specification.",
-            })),
-            missingDeliverables: parsed.missingDeliverables || [],
-            inconsistencies: parsed.inconsistencies || [],
-            verifiedFindings: parsed.verifiedFindings || [
-              "Evaluated submitted files and deliverable links against contract criteria.",
-            ],
-            unverifiedAssumptions: parsed.unverifiedAssumptions || [
-              "External URLs and runtime interactions require manual client verification.",
-            ],
-            suggestedRevisions: parsed.suggestedRevisions || [],
+            qualityScore: Number.isFinite(qualityScoreRaw)
+              ? Math.min(100, Math.max(0, Math.round(qualityScoreRaw)))
+              : overallScore,
+            qualityNotes: parsed.qualityNotes || "No quality notes were returned by the AI.",
+            criteria,
+            missingDeliverables: Array.isArray(parsed.missingDeliverables) ? parsed.missingDeliverables : [],
+            inconsistencies: Array.isArray(parsed.inconsistencies) ? parsed.inconsistencies : [],
+            verifiedFindings: Array.isArray(parsed.verifiedFindings) ? parsed.verifiedFindings : [],
+            unverifiedAssumptions:
+              Array.isArray(parsed.unverifiedAssumptions) && parsed.unverifiedAssumptions.length > 0
+                ? parsed.unverifiedAssumptions
+                : ["External URLs and runtime interactions require manual client verification."],
+            suggestedRevisions: Array.isArray(parsed.suggestedRevisions) ? parsed.suggestedRevisions : [],
             automatedChecks: checks,
             submissionFingerprint: fingerprint,
             isCached: false,
             isQuotaExceeded: false,
-          };
+          } as AIAssessment;
         }
 
         return null;
       })();
 
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
-      const liveResult = await Promise.race([liveAiPromise, timeoutPromise]);
+      const liveResult = await liveAiPromise;
       if (liveResult) return liveResult;
     } catch (err) {
       console.warn("Gemini API call timed out or failed, using intelligent heuristic audit:", err);
@@ -439,168 +481,106 @@ Return STRICTLY valid JSON conforming to this schema:
 }
 
 /**
- * Intelligent deterministic acceptance audit when Gemini API key is not configured or quota is exceeded.
+ * Basic completeness check used when the Gemini API key is not configured or the AI is unavailable.
+ * It can only tell whether SOMETHING was delivered — it cannot judge quality — so it never
+ * reports a requirement as "met" and always leaves the final decision to the client.
  */
 export function generateHeuristicAudit(input: VerifyMilestoneInput): AIAssessment {
-  const { milestoneTitle, milestoneDescription, acceptanceCriteria, submission } = input;
+  const { acceptanceCriteria, submission } = input;
   const hasDeliverableLinks = Boolean(submission.deliverableLinks && submission.deliverableLinks.length > 0);
   const hasRepo = Boolean(submission.githubRepo && submission.githubRepo.trim().length > 5);
   const hasDemo = Boolean(submission.demoUrl && submission.demoUrl.trim().length > 5);
+  const hasVideo = Boolean(submission.loomVideo && submission.loomVideo.trim().length > 5);
   const notesLength = submission.notes ? submission.notes.trim().length : 0;
   const attachmentsCount = submission.attachments?.length || 0;
 
+  const evidenceKinds = [hasDeliverableLinks, hasRepo, hasDemo, hasVideo, attachmentsCount > 0].filter(Boolean).length;
+  const hasAnyDeliverable = evidenceKinds > 0;
+
   const evaluatedCriteria: AcceptanceCriterion[] = acceptanceCriteria.map((crit) => {
-    const textLower = `${crit.title} ${crit.description}`.toLowerCase();
-    let status: "met" | "missing" | "needs_manual_review" = "met";
-    let evidence = "Deliverable verified against submitted materials, file manifests, and notes.";
-    let aiNotes = "Meets scope specification.";
-
-    if (textLower.includes("test") || textLower.includes("coverage")) {
-      if (!hasRepo && !hasDeliverableLinks && attachmentsCount === 0) {
-        status = "missing";
-        evidence = "No test suite or deliverable verification assets detected in submission.";
-        aiNotes = "Provide verification evidence or test results.";
-      } else {
-        status = "needs_manual_review";
-        evidence = "Deliverable verification materials provided. Client should inspect test coverage.";
-        aiNotes = "Confirm pass rate meets milestone targets.";
-      }
-    } else if (textLower.includes("mobile") || textLower.includes("responsive")) {
-      if (hasDemo || hasDeliverableLinks || attachmentsCount > 0) {
-        status = "met";
-        evidence = "Preview materials / assets provided for viewport verification.";
-        aiNotes = "Checked layout requirements.";
-      } else {
-        status = "needs_manual_review";
-        evidence = "Visual assets require review by client.";
-        aiNotes = "Provide preview link or screenshots.";
-      }
-    } else {
-      status = "met";
-      evidence = "Confirmed in deliverable submission package.";
-      aiNotes = "Meets requirement specifications.";
+    if (!hasAnyDeliverable) {
+      return {
+        ...crit,
+        status: "missing" as const,
+        evidence: "No files, links, repository, demo or video were submitted for this milestone.",
+        aiNotes: "Attach the deliverables that satisfy this requirement.",
+      };
     }
-
     return {
       ...crit,
-      status,
-      evidence,
-      aiNotes,
+      status: "needs_manual_review" as const,
+      evidence: "Deliverables were submitted, but the AI review was unavailable so this requirement was not assessed.",
+      aiNotes: "Review the submitted material against this requirement before approving.",
     };
   });
 
-  const metCount = evaluatedCriteria.filter((c) => c.status === "met").length;
   const missingCount = evaluatedCriteria.filter((c) => c.status === "missing").length;
-  const score = Math.round(
-    (metCount / Math.max(1, evaluatedCriteria.length)) * 88 +
-      (hasRepo || hasDeliverableLinks || attachmentsCount > 0 ? 7 : 0) +
-      (hasDemo || notesLength > 15 ? 5 : 0)
-  );
+  // Completeness only: at most 70 so it can never read as an approval.
+  const score = hasAnyDeliverable ? Math.min(70, 35 + evidenceKinds * 10 + (notesLength > 15 ? 5 : 0)) : 10;
 
-  const status: "approved" | "changes_requested" | "needs_verification" =
-    missingCount > 0 ? "changes_requested" : score >= 80 ? "approved" : "needs_verification";
+  const status: AIAssessment["status"] = hasAnyDeliverable ? "needs_verification" : "changes_requested";
 
   const verifiedFindings: string[] = [];
   if (attachmentsCount > 0) {
     verifiedFindings.push(
-      `Directly inspected ${attachmentsCount} uploaded file(s) (${submission.attachments?.map((a) => a.name).join(", ")}).`
+      `${attachmentsCount} file(s) were attached (${submission.attachments?.map((a) => a.name).join(", ")}). Contents were not analysed.`
     );
   }
   if (hasDeliverableLinks) {
-    verifiedFindings.push(
-      `Verified ${submission.deliverableLinks?.length} deliverable link(s) provided by freelancer.`
-    );
+    verifiedFindings.push(`${submission.deliverableLinks?.length} deliverable link(s) were provided. Links were not opened.`);
   }
   if (notesLength > 10) {
-    verifiedFindings.push("Freelancer provided completion notes and deliverables documentation.");
+    verifiedFindings.push("The freelancer provided completion notes.");
   }
 
-  const unverifiedAssumptions: string[] = [];
-  if (hasDemo) {
-    unverifiedAssumptions.push(
-      `Live staging preview (${submission.demoUrl}) requires client manual browser verification.`
-    );
-  }
-  if (hasRepo) {
-    unverifiedAssumptions.push(
-      `Code repository (${submission.githubRepo}) runtime behavior and build tests must be confirmed.`
-    );
-  }
-  if (submission.loomVideo) {
-    unverifiedAssumptions.push("Video walkthrough attached; visual playback requires client review.");
-  }
-  if (unverifiedAssumptions.length === 0) {
-    unverifiedAssumptions.push(
-      "Static deliverables verified; client retains final approval before payment release."
-    );
-  }
+  const unverifiedAssumptions: string[] = [
+    "Automated AI review was unavailable, so no deliverable was checked against the acceptance criteria.",
+  ];
+  if (hasDemo) unverifiedAssumptions.push(`Live preview (${submission.demoUrl}) must be opened and checked by the client.`);
+  if (hasRepo) unverifiedAssumptions.push(`Repository (${submission.githubRepo}) contents and build must be confirmed by the client.`);
+  if (hasVideo) unverifiedAssumptions.push("The video walkthrough must be watched by the client.");
 
   const missingDeliverables: string[] = [];
-  if (missingCount > 0) {
-    evaluatedCriteria
-      .filter((c) => c.status === "missing")
-      .forEach((c) => missingDeliverables.push(`Missing: ${c.title}`));
-  }
+  if (!hasAnyDeliverable) missingDeliverables.push("No deliverables (files, links, repository, demo or video) were submitted.");
 
   const checks: Array<{ name: string; passed: boolean; detail: string }> = [];
   if (attachmentsCount > 0) {
-    checks.push({
-      name: "Uploaded Deliverables & Files",
-      passed: true,
-      detail: `${attachmentsCount} deliverable file(s) verified`,
-    });
+    checks.push({ name: "Uploaded Deliverables & Files", passed: true, detail: `${attachmentsCount} file(s) attached` });
   }
   if (hasDeliverableLinks) {
     checks.push({
       name: "Deliverable Assets & Links",
       passed: true,
-      detail: `${submission.deliverableLinks?.length} asset link(s) verified`,
+      detail: `${submission.deliverableLinks?.length} asset link(s) provided`,
     });
   }
-  if (hasDemo) {
-    checks.push({
-      name: "Live Staging Preview",
-      passed: true,
-      detail: "Interactive staging URL accessible",
-    });
-  }
-  if (hasRepo) {
-    checks.push({
-      name: "Code Repository Integration",
-      passed: true,
-      detail: "Repository link submitted",
-    });
-  }
-
+  if (hasDemo) checks.push({ name: "Live Staging Preview", passed: true, detail: "Preview link provided (not opened)" });
+  if (hasRepo) checks.push({ name: "Code Repository", passed: true, detail: "Repository link provided (not inspected)" });
   checks.push({
-    name: "Agreed Scope Alignment",
-    passed: missingCount === 0,
-    detail: missingCount === 0 ? "Deliverables satisfy milestone criteria" : "Items need client review",
+    name: "Completeness Check",
+    passed: hasAnyDeliverable,
+    detail: hasAnyDeliverable
+      ? "Something was delivered; requirements still need manual review"
+      : "Nothing was delivered for this milestone",
   });
 
   return {
-    overallScore: Math.min(98, Math.max(50, score)),
-    summary:
-      missingCount > 0
-        ? `Found ${missingCount} item requiring attention before milestone approval.`
-        : `Verified ${metCount} of ${evaluatedCriteria.length} acceptance criteria against submitted deliverables.`,
+    overallScore: score,
+    summary: hasAnyDeliverable
+      ? "AI review was unavailable. This is a basic completeness check only — please review the deliverables against the acceptance criteria yourself."
+      : `No deliverables were found. ${missingCount} requirement(s) cannot be assessed until work is submitted.`,
     status,
     verifiedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    isDemonstration: false,
-    qualityScore: 88,
-    qualityNotes: "Heuristic evaluation based on submitted file manifests, assets, and completion summary.",
+    isDemonstration: true,
+    qualityScore: score,
+    qualityNotes: "Basic completeness check only; quality was not evaluated.",
     criteria: evaluatedCriteria,
     missingDeliverables,
     inconsistencies: [],
     verifiedFindings:
-      verifiedFindings.length > 0
-        ? verifiedFindings
-        : ["Submitted deliverables aligned with agreed scope."],
+      verifiedFindings.length > 0 ? verifiedFindings : ["No automated findings are available for this submission."],
     unverifiedAssumptions,
-    suggestedRevisions:
-      missingCount > 0
-        ? ["Address missing acceptance criteria items before resubmitting for payment release."]
-        : [],
+    suggestedRevisions: hasAnyDeliverable ? [] : ["Submit the deliverables before requesting approval."],
     automatedChecks: checks,
     isCached: false,
     isQuotaExceeded: false,
@@ -724,9 +704,10 @@ export async function generateInvoiceWithAI(
   const { projectId, projectTitle, client, freelancer, milestone, payment } = input;
   const apiKey = process.env.GEMINI_API_KEY;
   const stageNum = milestone.stageNumber || 1;
-  const txId = payment?.transactionId || `PAYID-SBX-${Math.random().toString(36).substring(2, 8).toUpperCase()}-Q`;
-  const paymentDate = payment?.paidAt || milestone.paidAt || "Nov 02, 2026 • 04:30 PM";
-  const issueDate = paymentDate.split("•")[0]?.trim() || "Nov 02, 2026";
+  // Never invent payment facts: if a value is unknown the invoice says so.
+  const txId = payment?.transactionId || "N/A";
+  const paymentDate = payment?.paidAt || milestone.paidAt || "N/A";
+  const issueDate = paymentDate.split("•")[0]?.trim() || paymentDate;
   const rawHash = `${projectId}_${milestone.id}_${txId}_${milestone.amount}`;
   let hashVal = 0;
   for (let i = 0; i < rawHash.length; i++) {

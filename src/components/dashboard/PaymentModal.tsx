@@ -13,10 +13,10 @@ import {
   Loader2,
   Info,
 } from "lucide-react";
-import { Milestone, ProjectContract } from "@/lib/dashboard-data";
+import { Milestone, ProjectContract, SUPPORTED_CHECKOUT_CURRENCIES, getCurrencySymbol } from "@/lib/dashboard-data";
 import { PaymentIcon } from "./icons";
 import { useDashboard } from "@/lib/dashboard-store";
-import { getSupabaseClient } from "@/lib/supabase";
+import { authFetch } from "@/lib/api-client";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 interface PaymentModalProps {
@@ -39,6 +39,14 @@ interface VerifiedReceipt {
   timestamp: string;
 }
 
+/** 1250.5 + "USD" -> "$1,250.50 USD" */
+function money(amount: number, currency: string): string {
+  return `${getCurrencySymbol(currency)}${Number(amount || 0).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} ${currency}`;
+}
+
 export default function PaymentModal({
   project,
   milestone,
@@ -46,41 +54,12 @@ export default function PaymentModal({
   onClose,
   onOpenInvoice,
 }: PaymentModalProps) {
-  const { makePayment, authUser } = useDashboard();
+  const { makePayment } = useDashboard();
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
   const [isCapturing, setIsCapturing] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [verifiedReceipt, setVerifiedReceipt] = useState<VerifiedReceipt | null>(null);
-
-  const getAuthPayload = async () => {
-    const callerId = authUser?.id || project.clientId || project.client?.id;
-    const callerEmail = authUser?.email || project.client?.email;
-    const callerMso = authUser?.milestoneOSId || authUser?.clientId || project.client?.milestoneOSId;
-
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    try {
-      const supabase = getSupabaseClient();
-      const session = (await supabase?.auth.getSession())?.data?.session;
-      if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
-      }
-    } catch (_) {}
-
-    if (callerId) headers["x-user-id"] = callerId;
-    if (callerEmail) headers["x-user-email"] = callerEmail;
-    if (callerMso) headers["x-user-mso-id"] = callerMso;
-
-    return {
-      headers,
-      bodyData: {
-        userId: callerId,
-        userEmail: callerEmail,
-        payerId: callerId,
-        milestoneOSId: callerMso,
-      },
-    };
-  };
 
   if (!isOpen) return null;
 
@@ -90,11 +69,8 @@ export default function PaymentModal({
   );
 
   const rawCurrency = (milestone.currency || project.currency || "USD").toUpperCase().trim();
-  const isINR =
-    rawCurrency === "INR" ||
-    rawCurrency === "₹" ||
-    rawCurrency === "RUPEE" ||
-    rawCurrency === "RUPEES";
+  // Checkout can only settle in supported currencies; anything else must be changed before paying.
+  const isUnsupportedCurrency = !SUPPORTED_CHECKOUT_CURRENCIES.includes(rawCurrency);
   const contractAmount = milestone.amount;
 
   const resetToIdle = () => {
@@ -138,7 +114,7 @@ export default function PaymentModal({
                 Verified Escrow Settlement Completed
               </span>
               <h4 className="text-2xl font-black text-slate-900 dark:text-white mt-2 font-mono">
-                ${verifiedReceipt.amount.toLocaleString()}.00 {verifiedReceipt.currency}
+                {money(verifiedReceipt.amount, verifiedReceipt.currency)}
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 Settled to {project.freelancer.name} via Verified Escrow
@@ -248,7 +224,7 @@ export default function PaymentModal({
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 dark:text-white">Milestone Contract Amount:</span>
                   <span className="font-mono font-black text-base text-slate-900 dark:text-white">
-                    {isINR ? `₹${contractAmount.toLocaleString()} INR` : `$${milestone.amount.toLocaleString()}.00 USD`}
+                    {money(contractAmount, rawCurrency)}
                   </span>
                 </div>
               </div>
@@ -299,15 +275,15 @@ export default function PaymentModal({
             {/* Live payment SDK Buttons Container */}
             {paymentState === "idle" && (
               <div className="space-y-3 pt-1">
-                {isINR ? (
+                {isUnsupportedCurrency ? (
                   <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs space-y-2">
                     <div className="flex items-center gap-2 font-bold text-sm text-amber-800 dark:text-amber-300">
                       <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                       <span>Currency Not Supported by Checkout</span>
                     </div>
                     <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-300">
-                      This milestone contract is denominated in <strong>₹{contractAmount.toLocaleString()} INR (Indian Rupee)</strong>.
-                      Secure Checkout Orders API does not support INR directly for escrow checkout.
+                      This milestone contract is denominated in <strong>{money(contractAmount, rawCurrency)}</strong>.
+                      Secure checkout does not support {rawCurrency} directly for escrow checkout.
                     </p>
                     <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400">
                       Per platform contract policy, silent or arbitrary currency conversions are prohibited.
@@ -327,7 +303,7 @@ export default function PaymentModal({
                   <PayPalScriptProvider
                     options={{
                       clientId,
-                      currency: "USD",
+                      currency: rawCurrency,
                       intent: "capture",
                     }}
                   >
@@ -344,14 +320,11 @@ export default function PaymentModal({
                         createOrder={async () => {
                           setErrorMessage(null);
                           try {
-                            const { headers, bodyData } = await getAuthPayload();
-                            const res = await fetch("/api/payments/create-order", {
+                            const res = await authFetch("/api/payments/create-order", {
                               method: "POST",
-                              headers,
                               body: JSON.stringify({
                                 projectId: project.id,
                                 milestoneId: milestone.id,
-                                ...bodyData,
                               }),
                             });
                             const data = await res.json();
@@ -376,15 +349,12 @@ export default function PaymentModal({
                           setErrorMessage(null);
 
                           try {
-                            const { headers, bodyData } = await getAuthPayload();
-                            const res = await fetch("/api/payments/capture-order", {
+                            const res = await authFetch("/api/payments/capture-order", {
                               method: "POST",
-                              headers,
                               body: JSON.stringify({
                                 orderId: data.orderID,
                                 projectId: project.id,
                                 milestoneId: milestone.id,
-                                ...bodyData,
                               }),
                             });
 
@@ -430,46 +400,8 @@ export default function PaymentModal({
                             setIsCapturing(false);
                           }
                         }}
-                        onCancel={async () => {
-                          // If popup closed unexpectedly, check if order was actually approved
-                          if (createdOrderId) {
-                            setPaymentState("awaiting_capture");
-                            setIsCapturing(true);
-                            try {
-                              const { headers, bodyData } = await getAuthPayload();
-                              const res = await fetch("/api/payments/capture-order", {
-                                method: "POST",
-                                headers,
-                                body: JSON.stringify({
-                                  orderId: createdOrderId,
-                                  projectId: project.id,
-                                  milestoneId: milestone.id,
-                                  ...bodyData,
-                                }),
-                              });
-                              const captureData = await res.json();
-                              if (res.ok && captureData.success && captureData.capture?.status === "COMPLETED") {
-                                const verified = captureData.capture;
-                                const captureId = verified.captureId;
-                                makePayment(project.id, milestone.id, captureId, verified.timestamp);
-                                setVerifiedReceipt({
-                                  captureId,
-                                  orderId: createdOrderId,
-                                  amount: verified.amount,
-                                  currency: verified.currency,
-                                  payerEmail: verified.payerEmail,
-                                  payerName: verified.payerName,
-                                  timestamp: verified.timestamp,
-                                });
-                                setPaymentState("paid");
-                                return;
-                              }
-                            } catch (_) {
-                              // If capture check fails, proceed with cancellation
-                            } finally {
-                              setIsCapturing(false);
-                            }
-                          }
+                        onCancel={() => {
+                          // The buyer closed checkout without approving, so nothing was charged and nothing is captured.
                           setPaymentState("cancelled");
                           setErrorMessage("The checkout window was closed before completion. No funds were debited, and the milestone remains unpaid.");
                         }}

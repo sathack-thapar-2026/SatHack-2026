@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { authFetch } from "@/lib/api-client";
 import {
   ProjectContract,
   Milestone,
@@ -69,13 +70,23 @@ interface InvoiceData {
  * Builds a pristine, 100% plain white corporate invoice HTML document.
  * Strictly 1 Page layout, no backgrounds, no web threads, no canvases, no gradients.
  */
+/** Escapes text before it is placed into the invoice HTML (names/titles are user-controlled). */
+function esc(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function buildCleanInvoiceHtml(invoice: InvoiceData): string {
   const sym = (invoice.currency || "USD").toUpperCase() === "INR" ? "₹" : "$";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Invoice - ${invoice.invoiceNumber} - MilestoneOS</title>
+  <title>Invoice - ${esc(invoice.invoiceNumber)} - MilestoneOS</title>
   <style>
     @page {
       size: A4 portrait;
@@ -354,32 +365,32 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
       <div class="title-box">
         <div class="title">INVOICE</div>
         <div><span class="paid-badge">PAID • SETTLED</span></div>
-        <div class="meta-line">Invoice #: <span class="meta-bold">${invoice.invoiceNumber}</span></div>
-        <div class="meta-line">Payment Date: <span class="meta-bold">${invoice.paymentDate}</span></div>
+        <div class="meta-line">Invoice #: <span class="meta-bold">${esc(invoice.invoiceNumber)}</span></div>
+        <div class="meta-line">Payment Date: <span class="meta-bold">${esc(invoice.paymentDate)}</span></div>
       </div>
     </div>
 
     <div class="parties">
       <div>
         <div class="party-title">Billed To (Client)</div>
-        <div class="party-name">${invoice.client.name}</div>
-        <div class="party-sub">${invoice.client.company}</div>
-        <div class="party-sub">${invoice.client.email}</div>
-        ${invoice.client.clientId ? `<div class="party-id-tag">Client ID: ${invoice.client.clientId}</div>` : ""}
+        <div class="party-name">${esc(invoice.client.name)}</div>
+        <div class="party-sub">${esc(invoice.client.company)}</div>
+        <div class="party-sub">${esc(invoice.client.email)}</div>
+        ${invoice.client.clientId ? `<div class="party-id-tag">Client ID: ${esc(invoice.client.clientId)}</div>` : ""}
       </div>
       <div>
         <div class="party-title">Issued By (Freelancer)</div>
-        <div class="party-name">${invoice.freelancer.name}</div>
-        <div class="party-sub">${invoice.freelancer.title}</div>
-        <div class="party-sub">${invoice.freelancer.email}</div>
-        ${invoice.freelancer.freelancerId ? `<div class="party-id-tag">Freelancer ID: ${invoice.freelancer.freelancerId}</div>` : ""}
+        <div class="party-name">${esc(invoice.freelancer.name)}</div>
+        <div class="party-sub">${esc(invoice.freelancer.title)}</div>
+        <div class="party-sub">${esc(invoice.freelancer.email)}</div>
+        ${invoice.freelancer.freelancerId ? `<div class="party-id-tag">Freelancer ID: ${esc(invoice.freelancer.freelancerId)}</div>` : ""}
       </div>
     </div>
 
     <div class="project-banner">
       <div>
-        <div class="proj-title">${invoice.projectTitle}</div>
-        <div class="proj-sub">Stage 0${invoice.stageNumber} — ${invoice.milestoneTitle}</div>
+        <div class="proj-title">${esc(invoice.projectTitle)}</div>
+        <div class="proj-sub">Stage 0${esc(invoice.stageNumber)} — ${esc(invoice.milestoneTitle)}</div>
       </div>
       <div>
         <span class="escrow-pill">100% Escrow Released</span>
@@ -398,9 +409,9 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
         ${invoice.lineItems
           .map(
             (item) => `<tr>
-          <td><strong>${item.description}</strong></td>
-          <td style="color: #64748B;">${item.category}</td>
-          <td class="td-num">${sym}${item.amount.toLocaleString()}.00 ${invoice.currency}</td>
+          <td><strong>${esc(item.description)}</strong></td>
+          <td style="color: #64748B;">${esc(item.category)}</td>
+          <td class="td-num">${sym}${item.amount.toLocaleString()}.00 ${esc(invoice.currency)}</td>
         </tr>`
           )
           .join("")}
@@ -409,17 +420,17 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
 
     <div class="bottom-grid">
       <div class="settlement-info">
-        <div><span class="settlement-label">Payment Method:</span> <span class="settlement-val">${invoice.paymentMethod}</span></div>
-        <div><span class="settlement-label">Transaction ID:</span> <span class="mono settlement-val">${invoice.transactionId}</span></div>
+        <div><span class="settlement-label">Payment Method:</span> <span class="settlement-val">${esc(invoice.paymentMethod)}</span></div>
+        <div><span class="settlement-label">Transaction ID:</span> <span class="mono settlement-val">${esc(invoice.transactionId)}</span></div>
         <div><span class="settlement-label">Escrow Settlement:</span> <span class="settlement-val">Direct Mutual Release via Secure Escrow</span></div>
-        <div><span class="settlement-label">Ledger Verification Hash:</span> <span class="mono" style="font-size: 10px;">${invoice.cryptographicHash}</span></div>
+        <div><span class="settlement-label">Ledger Verification Hash:</span> <span class="mono" style="font-size: 10px;">${esc(invoice.cryptographicHash)}</span></div>
       </div>
 
       <div class="totals-box">
         <div class="total-row"><span>Milestone Subtotal:</span> <span class="mono">${sym}${invoice.subtotal.toLocaleString()}.00</span></div>
         <div class="total-row"><span>Escrow Released:</span> <span class="mono">-${sym}${invoice.escrowReleased.toLocaleString()}.00</span></div>
         <div class="total-row"><span>Platform Fee:</span> <span class="mono">${sym}0.00</span></div>
-        <div class="total-row total-final"><span>Total Paid:</span> <span class="mono">${sym}${invoice.total.toLocaleString()}.00 ${invoice.currency}</span></div>
+        <div class="total-row total-final"><span>Total Paid:</span> <span class="mono">${sym}${invoice.total.toLocaleString()}.00 ${esc(invoice.currency)}</span></div>
       </div>
     </div>
 
@@ -470,59 +481,12 @@ export default function InvoiceModal({
     async function fetchInvoice() {
       setLoading(true);
       try {
-        const res = await fetch("/api/ai/generate-invoice", {
+        // The server builds the invoice from the stored, verified payment record.
+        const res = await authFetch("/api/ai/generate-invoice", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             projectId: project?.id,
             milestoneId: milestone?.id,
-            transactionId:
-              transactionId ||
-              milestone?.transactionId ||
-              `PAYID-SBX-${Math.random().toString(36).substring(2, 8).toUpperCase()}-Q`,
-            customPayload: {
-              projectId: project?.id,
-              projectTitle: project?.title,
-              projectDescription: project?.description,
-              category: project?.category,
-              client: {
-                name: project?.client.name,
-                email: project?.client.email,
-                company: project?.client.company || "Client Organization",
-                clientId: resolvedClientId,
-                milestoneOSId: resolvedClientId,
-              },
-              freelancer: {
-                name: project?.freelancer.name,
-                email: project?.freelancer.email,
-                title: project?.freelancer.title || "Independent Contractor",
-                freelancerId: resolvedFreelancerId,
-                milestoneOSId: resolvedFreelancerId,
-              },
-              milestone: {
-                id: milestone?.id,
-                stageNumber: milestone?.stageNumber,
-                title: milestone?.title,
-                description: milestone?.description,
-                amount: milestone?.amount,
-                currency: milestone?.currency || "USD",
-                dueDate: milestone?.dueDate,
-                paidAt: milestone?.paidAt,
-                acceptanceCriteria: milestone?.acceptanceCriteria,
-                submissions: milestone?.submissions,
-              },
-              payment: {
-                transactionId:
-                  transactionId ||
-                  milestone?.transactionId ||
-                  "PAYID-SBX-973908-Q",
-                paidAt: milestone?.paidAt || "Nov 02, 2026 • 04:30 PM",
-                amount: milestone?.amount,
-                currency: milestone?.currency || "USD",
-                status: "completed",
-                method: "Verified Escrow Settlement",
-              },
-            },
           }),
         });
 
@@ -550,10 +514,7 @@ export default function InvoiceModal({
 
       // Safe deterministic fallback
       if (!isCancelled && project && milestone) {
-        const tx =
-          transactionId ||
-          milestone.transactionId ||
-          "PAYID-SBX-973908-Q";
+        const tx = transactionId || milestone.transactionId || "N/A";
 
         const criteria = milestone.acceptanceCriteria || [];
         const maxItems = Math.min(Math.max(criteria.length, 1), 3);
@@ -585,8 +546,8 @@ export default function InvoiceModal({
 
         setInvoice({
           invoiceNumber: `INV-2026-MS0${milestone.stageNumber || 1}-9142`,
-          issueDate: milestone.paidAt?.split("•")[0]?.trim() || "Nov 02, 2026",
-          paymentDate: milestone.paidAt || "Nov 02, 2026 • 04:30 PM",
+          issueDate: milestone.paidAt?.split("•")[0]?.trim() || milestone.paidAt || "N/A",
+          paymentDate: milestone.paidAt || "N/A",
           dueDate: milestone.dueDate || "Completed",
           status: "PAID",
           transactionId: tx,

@@ -180,7 +180,7 @@ export default function EditProfileModal({ isOpen, onClose }: EditProfileModalPr
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <input
                     type="email"
-                    required
+                    readOnly
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="email@example.com"
@@ -188,7 +188,7 @@ export default function EditProfileModal({ isOpen, onClose }: EditProfileModalPr
                   />
                 </div>
                 <span className="text-[11px] text-slate-400 block mt-1">
-                  Linked account email for notifications and settlements.
+                  This is your sign-in email and cannot be changed here.
                 </span>
               </div>
             </div>

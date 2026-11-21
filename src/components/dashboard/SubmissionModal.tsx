@@ -98,7 +98,22 @@ export default function SubmissionModal({
 
     const fileList = Array.from(files);
 
+    // Files travel inside the request as base64, so each file and the total are capped.
+    const MAX_FILE_BYTES = 5 * 1024 * 1024;
+    const MAX_TOTAL_BYTES = 8 * 1024 * 1024;
+    let runningBytes = uploadedFiles.reduce((sum, f) => sum + Math.floor(((f.dataUrl?.length || 0) * 3) / 4), 0);
+
     fileList.forEach((file) => {
+      if (file.size > MAX_FILE_BYTES) {
+        setFormError(`"${file.name}" is larger than 5 MB. Upload a smaller file or share it as a link instead.`);
+        return;
+      }
+      if (runningBytes + file.size > MAX_TOTAL_BYTES) {
+        setFormError("Uploads are limited to 8 MB in total per submission. Share large files as links instead.");
+        return;
+      }
+      runningBytes += file.size;
+
       const reader = new FileReader();
 
       const formatSize = (bytes: number) => {

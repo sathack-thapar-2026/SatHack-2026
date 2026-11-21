@@ -34,6 +34,7 @@ import {
   formatFreelancerId,
 } from "@/lib/dashboard-data";
 import { useDashboard } from "@/lib/dashboard-store";
+import { authFetch } from "@/lib/api-client";
 import ShareInvitationModal from "./ShareInvitationModal";
 
 interface NewProjectModalProps {
@@ -225,7 +226,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
     if (!isOpen) return;
     const targetRole = isClient ? "freelancer" : "client";
     setIsLoadingCounterparties(true);
-    fetch(`/api/users/lookup?list=true&role=${targetRole}`)
+    authFetch(`/api/users/lookup?list=true&role=${targetRole}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.success && Array.isArray(d.users)) {
@@ -308,9 +309,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
     setIsSearching(true);
     try {
       const expectedRole = isClient ? "freelancer" : "client";
-      const currentUserId = authUser?.id || myProfile?.id;
-      const proposerParam = currentUserId ? `&proposerId=${encodeURIComponent(currentUserId)}` : "";
-      const res = await fetch(`/api/users/lookup?id=${encodeURIComponent(rawId)}&expectedRole=${expectedRole}${proposerParam}`);
+      const res = await authFetch(`/api/users/lookup?id=${encodeURIComponent(rawId)}&expectedRole=${expectedRole}`);
       const data = await res.json();
       setIsSearching(false);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useMemo } from "react";
 import {
   ProjectContract,
   Milestone,
@@ -26,8 +26,10 @@ import {
   lookupMilestoneOSUser,
   isProjectCompleted,
   isProjectAccepted,
+  formatCurrency,
 } from "./dashboard-data";
 import { getSupabaseClient, isSupabaseConfigured } from "./supabase";
+import { authFetch } from "./api-client";
 
 export type DashboardTab =
   | "dashboard"
@@ -79,6 +81,24 @@ export interface AuthenticatedUser {
   title?: string;
   role: "client" | "freelancer" | "both";
   roles: string[];
+}
+
+/** Uploaded files are stored as base64 data URLs; keep them out of localStorage (it has a ~5 MB limit). */
+function slimProjectsForCache(projects: ProjectContract[]): ProjectContract[] {
+  return projects.map((p) => ({
+    ...p,
+    milestones: (p.milestones || []).map((m) => ({
+      ...m,
+      submissions: (m.submissions || []).map((sub) => ({
+        ...sub,
+        attachments: (sub.attachments || []).map((a) => ({
+          ...a,
+          dataUrl: undefined,
+          url: a.url && a.url.startsWith("data:") ? undefined : a.url,
+        })),
+      })),
+    })),
+  }));
 }
 
 export const DEFAULT_USER_PROFILES: UserProfiles = {
@@ -169,6 +189,8 @@ interface DashboardContextType {
   exitDemoMode: () => void;
   enterDemoMode: (demoRole?: "client" | "freelancer") => void;
   authUser: AuthenticatedUser | null;
+  /** True once the first sign-in check / data load has finished. */
+  isLoaded: boolean;
   refreshProjects: () => Promise<void>;
 
   // Actions
@@ -184,20 +206,11 @@ interface DashboardContextType {
   acceptProposal: (projectId: string) => void;
   requestProposalChanges: (projectId: string, feedback: string) => void;
   rejectProposal: (projectId: string, reason?: string) => void;
-  resubmitProposal: (projectId: string, updatedData: Partial<ProjectContract>) => void;
+  resubmitProposal: (projectId: string, updatedData: Partial<ProjectContract>) => void | Promise<void>;
   revokeInvitation: (projectId: string) => void;
   acceptInvitationByToken: (
-    token: string,
-    claimingUser: {
-      id?: string;
-      name: string;
-      email: string;
-      avatar: string;
-      milestoneOSId: string;
-      role: "client" | "freelancer";
-      companyOrTitle?: string;
-    }
-  ) => { success: boolean; project?: ProjectContract; error?: string };
+    token: string
+  ) => Promise<{ success: boolean; project?: ProjectContract; error?: string }>;
   lookupUserById: (id: string) => MilestoneOSUser | null;
   addMilestone: (
     projectId: string,
@@ -237,7 +250,7 @@ interface DashboardContextType {
   ) => void | Promise<void>;
   requestRevision: (projectId: string, milestoneId: string, reason: string) => void;
   requestChanges: (projectId: string, milestoneId: string, reason: string) => void;
-  approveMilestone: (projectId: string, milestoneId: string) => void;
+  approveMilestone: (projectId: string, milestoneId: string) => Promise<boolean>;
   setMilestoneAudit: (projectId: string, milestoneId: string, audit: AIAssessment) => void;
   releasePayment: (projectId: string, milestoneId: string, verifiedCaptureId: string) => string;
   makePayment: (projectId: string, milestoneId: string, verifiedCaptureId: string, timestamp?: string) => string;
@@ -282,15 +295,22 @@ export function DashboardProvider({
   const [alertState, setAlertState] = useState<AlertState | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Always-current copy of the signed-in user, so timers/focus handlers never use a stale identity.
+  const authUserRef = useRef<AuthenticatedUser | null>(null);
+  useEffect(() => {
+    authUserRef.current = authUser;
+  }, [authUser]);
+
   // Derive active perspective user profiles
   const userProfiles: UserProfiles = useMemo(() => {
-    const currentName = authUser?.name || DEFAULT_USER_PROFILES.client.name;
-    const currentEmail = authUser?.email || DEFAULT_USER_PROFILES.client.email;
-    const currentAvatar = authUser?.avatar || DEFAULT_USER_PROFILES.client.avatar;
-    const baseCode = authUser?.baseCode || extractBaseCode(authUser?.milestoneOSId) || DEFAULT_USER_PROFILES.client.baseCode;
-    const clientId = authUser?.clientId || formatClientId(baseCode);
-    const freelancerId = authUser?.freelancerId || formatFreelancerId(baseCode);
-    const currentId = authUser?.id || DEFAULT_USER_PROFILES.client.id;
+    // Signed-out visitors get neutral placeholders; nobody else's identity is ever assumed.
+    const currentName = authUser?.name || "Guest";
+    const currentEmail = authUser?.email || "";
+    const currentAvatar = authUser?.avatar || "GU";
+    const baseCode = authUser?.baseCode || extractBaseCode(authUser?.milestoneOSId) || "";
+    const clientId = authUser?.clientId || (baseCode ? formatClientId(baseCode) : "");
+    const freelancerId = authUser?.freelancerId || (baseCode ? formatFreelancerId(baseCode) : "");
+    const currentId = authUser?.id || "";
 
     return {
       client: {
@@ -302,7 +322,7 @@ export function DashboardProvider({
         name: currentName,
         email: currentEmail,
         avatar: currentAvatar,
-        company: authUser?.company || DEFAULT_USER_PROFILES.client.company || "Client",
+        company: authUser?.company || "Client",
       },
       freelancer: {
         id: currentId,
@@ -313,7 +333,7 @@ export function DashboardProvider({
         name: currentName,
         email: currentEmail,
         avatar: currentAvatar,
-        title: authUser?.title || DEFAULT_USER_PROFILES.freelancer.title || "Freelancer",
+        title: authUser?.title || "Freelancer",
         rating: 5.0,
       },
     };
@@ -321,10 +341,12 @@ export function DashboardProvider({
 
   // Derive perspective-scoped projects based on active role
   const projects: ProjectContract[] = useMemo(() => {
-    const uId = authUser?.id || DEFAULT_USER_PROFILES.client.id;
-    const uEmail = authUser?.email?.trim().toLowerCase() || DEFAULT_USER_PROFILES.client.email;
-    const uMsoId = authUser?.milestoneOSId?.trim().toUpperCase() || (role === "client" ? "CL-2W8L41" : "FL-2W8L41");
-    const uBase = extractBaseCode(uMsoId) || authUser?.baseCode?.trim().toUpperCase() || "2W8L41";
+    // No signed-in user means no projects. (There is deliberately no fallback identity.)
+    if (!authUser?.id) return [];
+    const uId = authUser.id;
+    const uEmail = authUser.email?.trim().toLowerCase() || "";
+    const uMsoId = authUser.milestoneOSId?.trim().toUpperCase() || "";
+    const uBase = extractBaseCode(uMsoId) || authUser.baseCode?.trim().toUpperCase() || "";
 
     return rawProjects.filter((p) => {
       // Must not be an unrelated demo fixture in user mode
@@ -480,7 +502,9 @@ export function DashboardProvider({
     refreshProjects();
   };
 
-  // Fetch projects from server scoped to current authenticated user
+  // Fetch projects from server scoped to the current authenticated user (identity = verified session token)
+  // Reads the signed-in user from authUserRef (not from a render closure), so it is safe to call from
+  // timers and focus handlers that were created earlier.
   const refreshProjects = async () => {
     try {
       localStorage.removeItem(STORAGE_KEYS.DEMO_MODE);
@@ -488,37 +512,29 @@ export function DashboardProvider({
     } catch (_) {}
     setIsDemoModeState(false);
 
-    const effectiveId = authUser?.id || DEFAULT_USER_PROFILES.client.id;
-    const effectiveEmail = authUser?.email || DEFAULT_USER_PROFILES.client.email;
-    const effectiveMso = authUser?.milestoneOSId || (role === "client" ? "CL-2W8L41" : "FL-2W8L41");
+    const user = authUserRef.current;
+    if (!user?.id) return; // never fetch anybody's data without a signed-in user
 
+    const readJson = (r: Response) => r.json().catch(() => ({}));
     try {
-      const msoParam = effectiveMso ? `&milestoneOSId=${encodeURIComponent(effectiveMso)}` : "";
       const [pRes, tRes, nRes] = await Promise.all([
-        fetch(
-          `/api/projects?userId=${encodeURIComponent(effectiveId)}&userEmail=${encodeURIComponent(effectiveEmail)}${msoParam}`
-        ).then((r) => r.json()).catch(() => ({})),
-        fetch(
-          `/api/transactions?userId=${encodeURIComponent(effectiveId)}&userEmail=${encodeURIComponent(effectiveEmail)}`
-        ).then((r) => r.json()).catch(() => ({})),
-        fetch(
-          `/api/notifications?userId=${encodeURIComponent(effectiveId)}`
-        ).then((r) => r.json()).catch(() => ({})),
+        authFetch("/api/projects").then(readJson).catch(() => ({})),
+        authFetch("/api/transactions").then(readJson).catch(() => ({})),
+        authFetch("/api/notifications").then(readJson).catch(() => ({})),
       ]);
 
+      // Only replace what we have when the server actually answered; a failed poll keeps the current view.
       if (pRes?.success && Array.isArray(pRes.projects)) {
         setRawProjects(pRes.projects);
         try {
-          localStorage.setItem(`milestoneos_projects_${effectiveId}`, JSON.stringify(pRes.projects));
+          localStorage.setItem(`milestoneos_projects_${user.id}`, JSON.stringify(slimProjectsForCache(pRes.projects)));
         } catch (_) {}
-      } else {
-        setRawProjects([]);
       }
 
       if (tRes?.success && Array.isArray(tRes.transactions)) {
         setTransactions(tRes.transactions);
         try {
-          localStorage.setItem(`milestoneos_transactions_${effectiveId}`, JSON.stringify(tRes.transactions));
+          localStorage.setItem(`milestoneos_transactions_${user.id}`, JSON.stringify(tRes.transactions));
         } catch (_) {}
       }
 
@@ -537,7 +553,8 @@ export function DashboardProvider({
     if (!authUser) return;
 
     const newName = data.name !== undefined ? data.name : authUser.name;
-    const newEmail = data.email !== undefined ? data.email : authUser.email;
+    // The email is the sign-in identity and is verified by the auth service; it cannot be edited from the profile form.
+    const newEmail = authUser.email;
     const initials = newName
       .trim()
       .split(" ")
@@ -617,8 +634,9 @@ export function DashboardProvider({
 
       // Instant SWR Hydration: Render cached projects and transactions immediately (0ms latency!)
       let hadCachedData = false;
-      const targetCacheId = initialUser?.id || DEFAULT_USER_PROFILES.client.id;
-      const cachedProjectsStr = localStorage.getItem(`milestoneos_projects_${targetCacheId}`);
+      // Only ever restore a cache that belongs to a known signed-in user — never a shared/default one.
+      const targetCacheId = initialUser?.id || "";
+      const cachedProjectsStr = targetCacheId ? localStorage.getItem(`milestoneos_projects_${targetCacheId}`) : null;
       if (cachedProjectsStr) {
         try {
           const parsedP = JSON.parse(cachedProjectsStr);
@@ -630,7 +648,7 @@ export function DashboardProvider({
         } catch (_) {}
       }
 
-      const cachedTxsStr = localStorage.getItem(`milestoneos_transactions_${targetCacheId}`);
+      const cachedTxsStr = targetCacheId ? localStorage.getItem(`milestoneos_transactions_${targetCacheId}`) : null;
       if (cachedTxsStr) {
         try {
           const parsedT = JSON.parse(cachedTxsStr);
@@ -647,31 +665,19 @@ export function DashboardProvider({
       }
 
       // Helper to fetch live projects & transactions in parallel in background
-      const refreshUserData = async (uId: string, uEmail: string, uMsoId?: string) => {
+      const refreshUserData = async (uId: string) => {
         try {
-          const msoParam = uMsoId ? `&milestoneOSId=${encodeURIComponent(uMsoId)}` : "";
+          const readJson = (r: Response) => r.json().catch(() => ({}));
           const [pData, tData, nData] = await Promise.all([
-            fetch(
-              `/api/projects?userId=${encodeURIComponent(uId)}&userEmail=${encodeURIComponent(uEmail)}${msoParam}`
-            )
-              .then((r) => r.json())
-              .catch(() => ({})),
-            fetch(
-              `/api/transactions?userId=${encodeURIComponent(uId)}&userEmail=${encodeURIComponent(uEmail)}`
-            )
-              .then((r) => r.json())
-              .catch(() => ({})),
-            fetch(
-              `/api/notifications?userId=${encodeURIComponent(uId)}`
-            )
-              .then((r) => r.json())
-              .catch(() => ({})),
+            authFetch("/api/projects").then(readJson).catch(() => ({})),
+            authFetch("/api/transactions").then(readJson).catch(() => ({})),
+            authFetch("/api/notifications").then(readJson).catch(() => ({})),
           ]);
           if (!mounted) return;
           if (pData?.success && Array.isArray(pData.projects)) {
             setRawProjects(pData.projects);
             try {
-              localStorage.setItem(`milestoneos_projects_${uId}`, JSON.stringify(pData.projects));
+              localStorage.setItem(`milestoneos_projects_${uId}`, JSON.stringify(slimProjectsForCache(pData.projects)));
             } catch (_) {}
           }
           if (tData?.success && Array.isArray(tData.transactions)) {
@@ -764,11 +770,11 @@ export function DashboardProvider({
             }
 
             // Always refresh live data for the authenticated user from Supabase
-            refreshUserData(resolvedUser.id, resolvedUser.email, primaryMsoId);
+            refreshUserData(resolvedUser.id);
           } else {
             // Unauthenticated user: try refreshing with locally cached user if available
             if (initialUser?.id) {
-              refreshUserData(initialUser.id, initialUser.email, initialUser.milestoneOSId);
+              refreshUserData(initialUser.id);
             } else {
               setAuthUser(null);
               setRawProjects([]);
@@ -780,7 +786,7 @@ export function DashboardProvider({
         });
       } else {
         if (initialUser?.id) {
-          refreshUserData(initialUser.id, initialUser.email, initialUser.milestoneOSId);
+          refreshUserData(initialUser.id);
         } else {
           setIsLoaded(true);
         }
@@ -797,19 +803,17 @@ export function DashboardProvider({
 
   // Save projects to scoped cache
   useEffect(() => {
-    if (!isLoaded) return;
-    const targetCacheId = authUser?.id || DEFAULT_USER_PROFILES.client.id;
+    if (!isLoaded || !authUser?.id) return;
     try {
-      localStorage.setItem(`milestoneos_projects_${targetCacheId}`, JSON.stringify(rawProjects));
+      localStorage.setItem(`milestoneos_projects_${authUser.id}`, JSON.stringify(slimProjectsForCache(rawProjects)));
     } catch (_) {}
   }, [rawProjects, isLoaded, authUser]);
 
   // Save transactions to scoped cache
   useEffect(() => {
-    if (!isLoaded) return;
-    const targetCacheId = authUser?.id || DEFAULT_USER_PROFILES.client.id;
+    if (!isLoaded || !authUser?.id) return;
     try {
-      localStorage.setItem(`milestoneos_transactions_${targetCacheId}`, JSON.stringify(transactions));
+      localStorage.setItem(`milestoneos_transactions_${authUser.id}`, JSON.stringify(transactions));
     } catch (_) {}
   }, [transactions, isLoaded, authUser]);
 
@@ -830,6 +834,8 @@ export function DashboardProvider({
       window.removeEventListener("focus", handleFocus);
       clearInterval(interval);
     };
+    // refreshProjects only depends on refs and state setters, so the first closure is always correct.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded]);
 
   // Action: Create Project / Propose Project
@@ -898,31 +904,32 @@ export function DashboardProvider({
     setRawProjects((prev) => [newProject, ...prev]);
     setActiveProjectIdState(id);
 
-    // Sync to backend API & Supabase
-    fetch("/api/projects", {
+    // Sync to backend API & Supabase. The server decides who the proposer is (from the signed-in session).
+    authFetch("/api/projects", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...newProject,
-        creatorId: authUser?.id,
-        clientId: newProject.clientId,
-        freelancerId: newProject.freelancerId,
-        isDemo: Boolean(newProject.isDemo),
-      }),
+      body: JSON.stringify(newProject),
     })
-      .then((res) => res.json())
+      .then((res) => res.json().catch(() => ({})))
       .then((data) => {
         if (data.success && data.project) {
           setRawProjects((prev) =>
-            prev.map((p) =>
-              p.id === id
-                ? { ...data.project, isDemo: Boolean(data.project.isDemo) }
-                : p
-            )
+            prev.some((p) => p.id === id)
+              ? prev.map((p) => (p.id === id ? { ...data.project, isDemo: Boolean(data.project.isDemo) } : p))
+              : [data.project, ...prev.filter((p) => p.id !== data.project.id)]
           );
+          setActiveProjectIdState((current) => (current === id ? data.project.id : current));
+        } else {
+          // The server rejected it (e.g. unknown recipient): remove the optimistic copy and say why.
+          setRawProjects((prev) => prev.filter((p) => p.id !== id));
+          setNotifications((prev) => prev.filter((n) => n.projectId !== id));
+          showToast(data.error || "The proposal could not be created.", "warning");
         }
       })
-      .catch((err) => console.warn("Failed to sync project creation to API:", err));
+      .catch((err) => {
+        console.warn("Failed to sync project creation to API:", err);
+        setRawProjects((prev) => prev.filter((p) => p.id !== id));
+        showToast("Could not reach the server. The proposal was not created.", "warning");
+      });
 
     if (!asDraft) {
       const curr = newProject.currency || "USD";
@@ -954,28 +961,32 @@ export function DashboardProvider({
     return id;
   };
 
-  const updateProject = (projectId: string, updates: Partial<ProjectContract>) => {
-    setRawProjects((prev) =>
-      prev.map((p) => {
-        if (p.id !== projectId) return p;
-        return { ...p, ...updates };
-      })
-    );
-    fetch(`/api/projects/${projectId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    }).catch(() => {});
-    showToast("Project settings updated.", "success");
+  const updateProject = async (projectId: string, updates: Partial<ProjectContract>) => {
+    setRawProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, ...updates } : p)));
+    try {
+      const res = await authFetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || "Could not save project changes.");
+      if (data.project) {
+        setRawProjects((prev) => prev.map((p) => (p.id === projectId ? data.project : p)));
+      }
+      showToast("Project settings updated.", "success");
+    } catch (err: any) {
+      showToast(err?.message || "Could not save project changes.", "warning");
+      refreshProjects(); // roll the screen back to what the server actually has
+    }
   };
 
   const archiveProject = (projectId: string) => {
     updateProject(projectId, { status: "archived" });
-    showToast("Project moved to archive.", "info");
   };
 
   const acceptProposal = async (projectId: string) => {
-    let projTitle = "";
+    const target = rawProjects.find((p) => p.id === projectId);
+    const projTitle = target?.title || "";
     const actorName = userProfiles[role].name;
     const nowStr = new Date().toLocaleDateString("en-US", {
       month: "short",
@@ -996,7 +1007,6 @@ export function DashboardProvider({
     setRawProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
-        projTitle = p.title;
         const updatedMilestones = p.milestones.map((m, idx) => ({
           ...m,
           status: m.status || (idx === 0 ? ("in_progress" as const) : ("not_started" as const)),
@@ -1021,44 +1031,31 @@ export function DashboardProvider({
       localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT, projectId);
     } catch (_) {}
 
-    const notif: NotificationItem = {
-      id: `notif_${Date.now()}`,
-      timestamp: "Just now",
-      title: "Proposal Accepted & Contract Active",
-      message: `The project "${projTitle}" has been accepted. Work on agreed milestones may now begin.`,
-      type: "approval",
-      unread: true,
-      projectId,
-      userId: authUser?.id,
-    };
-    setNotifications((prev) => [notif, ...prev]);
-
-    // Persist acceptance to server database & Supabase with authenticated caller credentials
+    // Persist acceptance to server database & Supabase (the server verifies who is accepting)
     try {
-      const res = await fetch(`/api/projects/${projectId}/proposals`, {
+      const res = await authFetch(`/api/projects/${projectId}/proposals`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "accept",
-          userId: authUser?.id,
-          userEmail: authUser?.email,
-        }),
+        body: JSON.stringify({ action: "accept" }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success || !data.project) {
         throw new Error(data.error || "Server failed to accept proposal");
       }
 
-      setRawProjects((prev) =>
-        prev.map((p) => (p.id === projectId ? data.project : p))
-      );
-      if (authUser?.id) {
-        try {
-          const current = JSON.parse(localStorage.getItem(`milestoneos_projects_${authUser.id}`) || "[]");
-          const updated = current.map((p: any) => (p.id === projectId ? data.project : p));
-          localStorage.setItem(`milestoneos_projects_${authUser.id}`, JSON.stringify(updated));
-        } catch (_) {}
-      }
+      setRawProjects((prev) => prev.map((p) => (p.id === projectId ? data.project : p)));
+      setNotifications((prev) => [
+        {
+          id: `notif_${Date.now()}`,
+          timestamp: "Just now",
+          title: "Proposal Accepted & Contract Active",
+          message: `The project "${data.project.title || projTitle}" has been accepted. Work on agreed milestones may now begin.`,
+          type: "approval",
+          unread: true,
+          projectId,
+          userId: authUser?.id,
+        },
+        ...prev,
+      ]);
       showToast(`Proposal accepted! Contract "${data.project.title || projTitle}" is now active in My Projects.`, "success");
       refreshProjects();
     } catch (err: any) {
@@ -1070,17 +1067,11 @@ export function DashboardProvider({
 
   const requestProposalChanges = async (projectId: string, feedback: string) => {
     try {
-      const res = await fetch(`/api/projects/${projectId}/proposals`, {
+      const res = await authFetch(`/api/projects/${projectId}/proposals`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "request_changes",
-          feedback,
-          userId: authUser?.id,
-          userEmail: authUser?.email,
-        }),
+        body: JSON.stringify({ action: "request_changes", feedback }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to submit revision request");
       }
@@ -1095,24 +1086,17 @@ export function DashboardProvider({
 
   const rejectProposal = async (projectId: string, reason?: string) => {
     try {
-      // Immediately remove from local state so both client and freelancer views clear it right away
+      // Immediately remove from local state so the view clears right away (restored by the refresh if it fails)
       setRawProjects((prev) => prev.filter((p) => p.id !== projectId));
       if (activeProject?.id === projectId) {
         setActiveProjectIdState("");
       }
 
-      const res = await fetch(`/api/projects/${projectId}/proposals`, {
+      const res = await authFetch(`/api/projects/${projectId}/proposals`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "reject",
-          reason,
-          userId: authUser?.id,
-          userEmail: authUser?.email,
-          role,
-        }),
+        body: JSON.stringify({ action: "reject", feedback: reason }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to decline proposal");
       }
@@ -1125,11 +1109,11 @@ export function DashboardProvider({
     }
   };
 
-  const resubmitProposal = (projectId: string, updatedData: Partial<ProjectContract>) => {
+  const resubmitProposal = async (projectId: string, updatedData: Partial<ProjectContract>) => {
+    const actorName = userProfiles[role].name;
     setRawProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
-        const actorName = userProfiles[role].name;
         const newLog: ActivityItem = {
           id: `act_${Date.now()}`,
           timestamp: "Just now",
@@ -1149,25 +1133,38 @@ export function DashboardProvider({
     );
 
     // Persist revised proposal to server database & Supabase
-    fetch(`/api/projects/${projectId}/proposals`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "resubmit",
-        updatedData,
-        userId: authUser?.id,
-        userEmail: authUser?.email,
-      }),
-    }).catch((err) => console.warn("Failed to sync resubmission to API:", err));
-
-    showToast("Revised proposal submitted for acceptance.", "success");
+    try {
+      const res = await authFetch(`/api/projects/${projectId}/proposals`, {
+        method: "POST",
+        body: JSON.stringify({ action: "resubmit", updatedData }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Could not resubmit the proposal.");
+      }
+      if (data.project) {
+        setRawProjects((prev) => prev.map((p) => (p.id === projectId ? data.project : p)));
+      }
+      showToast("Revised proposal submitted for acceptance.", "success");
+    } catch (err: any) {
+      console.warn("Failed to sync resubmission to API:", err);
+      showToast(err?.message || "Could not resubmit the proposal.", "warning");
+      refreshProjects();
+    }
   };
 
-  const revokeInvitation = (projectId: string) => {
+  const revokeInvitation = async (projectId: string) => {
+    const target = rawProjects.find((p) => p.id === projectId);
+    const token = target?.invitationToken;
+    if (!token) {
+      showToast("This proposal has no invitation link to revoke.", "warning");
+      return;
+    }
+
+    const actorName = userProfiles[role].name;
     setRawProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
-        const actorName = userProfiles[role].name;
         const newLog: ActivityItem = {
           id: `act_${Date.now()}`,
           timestamp: "Just now",
@@ -1184,139 +1181,69 @@ export function DashboardProvider({
         };
       })
     );
-    showToast("Invitation link revoked.", "info");
+
+    try {
+      const res = await authFetch(`/api/invitations/${encodeURIComponent(token)}`, {
+        method: "POST",
+        body: JSON.stringify({ action: "revoke" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) throw new Error(data.error || "Could not revoke the invitation link.");
+      showToast("Invitation link revoked.", "info");
+      refreshProjects();
+    } catch (err: any) {
+      showToast(err?.message || "Could not revoke the invitation link.", "warning");
+      refreshProjects();
+    }
   };
 
-  const acceptInvitationByToken = (
-    token: string,
-    claimingUser: {
-      id?: string;
-      name: string;
-      email: string;
-      avatar: string;
-      milestoneOSId: string;
-      role: "client" | "freelancer";
-      companyOrTitle?: string;
+  // The server verifies the signed-in user, checks the link and binds the contract to that account.
+  const acceptInvitationByToken = async (
+    token: string
+  ): Promise<{ success: boolean; project?: ProjectContract; error?: string }> => {
+    try {
+      const res = await authFetch(`/api/invitations/${encodeURIComponent(token)}`, {
+        method: "POST",
+        body: JSON.stringify({ action: "accept" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success || !data.project) {
+        return { success: false, error: data.error || "Failed to accept proposal." };
+      }
+      const project: ProjectContract = data.project;
+      setRawProjects((prev) => [project, ...prev.filter((p) => p.id !== project.id)]);
+      setActiveProjectIdState(project.id);
+      refreshProjects();
+      return { success: true, project };
+    } catch (err: any) {
+      return { success: false, error: err?.message || "Failed to accept proposal." };
     }
-  ): { success: boolean; project?: ProjectContract; error?: string } => {
-    const project = rawProjects.find((p) => p.invitationToken === token);
-    if (!project) {
-      return { success: false, error: "Invitation proposal not found." };
-    }
-    if (project.invitationStatus === "revoked") {
-      return { success: false, error: "This invitation link was revoked by the sender." };
-    }
-    if (project.invitationStatus === "claimed" || project.status === "active") {
-      return { success: false, error: "This proposal has already been accepted and bound to another account." };
-    }
-    if (project.invitationExpiresAt && new Date(project.invitationExpiresAt).getTime() < Date.now()) {
-      return { success: false, error: "This invitation link has expired." };
-    }
-
-    const senderId =
-      project.initiatorMilestoneOSId ||
-      (project.initiatedBy === "client" ? project.client.milestoneOSId : project.freelancer.milestoneOSId);
-
-    if (senderId && claimingUser.milestoneOSId && senderId === claimingUser.milestoneOSId) {
-      return { success: false, error: "You created this proposal. You cannot accept your own invitation link." };
-    }
-
-    const nowStr = new Date().toLocaleDateString("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const isClientSender = project.initiatedBy === "client";
-    const resolvedClaimId = claimingUser.id || authUser?.id;
-
-    const updatedMilestones = project.milestones.map((m, idx) => ({
-      ...m,
-      status: m.status || (idx === 0 ? ("in_progress" as const) : ("not_started" as const)),
-    }));
-
-    const newLog: ActivityItem = {
-      id: `act_${Date.now()}`,
-      timestamp: "Just now",
-      actor: claimingUser.name,
-      actorRole: claimingUser.role,
-      action: `${claimingUser.name} accepted the project proposal via private invitation link. Agreement is now active.`,
-    };
-
-    const updatedClient = isClientSender
-      ? project.client
-      : {
-          id: resolvedClaimId,
-          name: claimingUser.name,
-          email: claimingUser.email,
-          avatar: claimingUser.avatar,
-          company: claimingUser.companyOrTitle || "Client Organization",
-          milestoneOSId: claimingUser.milestoneOSId,
-        };
-
-    const updatedFreelancer = isClientSender
-      ? {
-          id: resolvedClaimId,
-          name: claimingUser.name,
-          email: claimingUser.email,
-          avatar: claimingUser.avatar,
-          title: claimingUser.companyOrTitle || "Freelancer",
-          rating: 5.0,
-          milestoneOSId: claimingUser.milestoneOSId,
-        }
-      : project.freelancer;
-
-    const updatedProject: ProjectContract = {
-      ...project,
-      client: updatedClient,
-      freelancer: updatedFreelancer,
-      clientId: !isClientSender ? resolvedClaimId : project.clientId,
-      freelancerId: isClientSender ? resolvedClaimId : project.freelancerId,
-      status: "active",
-      proposalStatus: "accepted",
-      acceptedAt: nowStr,
-      acceptedByMilestoneOSId: claimingUser.milestoneOSId,
-      termsAgreed: true,
-      invitationStatus: "claimed",
-      milestones: updatedMilestones,
-      activityLog: [newLog, ...project.activityLog],
-    };
-
-    setRawProjects((prev) => prev.map((p) => (p.id === project.id ? updatedProject : p)));
-    setActiveProjectIdState(project.id);
-
-    // Call server API to claim
-    fetch(`/api/invitations/${token}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "accept",
-        claimingUser: {
-          ...claimingUser,
-          id: resolvedClaimId,
-        },
-      }),
-    }).catch(() => {});
-
-    const notif: NotificationItem = {
-      id: `notif_${Date.now()}`,
-      timestamp: "Just now",
-      title: "Proposal Accepted & Contract Active",
-      message: `${claimingUser.name} accepted your invitation for "${project.title}". Milestone 01 is now in progress!`,
-      type: "approval",
-      unread: true,
-      projectId: project.id,
-      userId: authUser?.id,
-    };
-    setNotifications((prev) => [notif, ...prev]);
-
-    return { success: true, project: updatedProject };
   };
 
   const lookupUserById = (id: string): MilestoneOSUser | null => {
     return lookupMilestoneOSUser(id);
+  };
+
+  /**
+   * Runs the server call that backs an optimistic screen change. If the server refuses
+   * (not allowed, wrong state, offline) the reason is shown and the screen is re-synced
+   * from the server so it never keeps displaying something that did not actually happen.
+   */
+  const syncOrRevert = async (request: Promise<Response>, failMessage: string): Promise<boolean> => {
+    try {
+      const res = await request;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) throw new Error(data.error || failMessage);
+      if (data.project && data.project.id) {
+        const fresh: ProjectContract = data.project;
+        setRawProjects((prev) => prev.map((p) => (p.id === fresh.id ? fresh : p)));
+      }
+      return true;
+    } catch (err: any) {
+      showToast(err?.message || failMessage, "warning");
+      refreshProjects();
+      return false;
+    }
   };
 
   const addMilestone = (
@@ -1376,22 +1303,23 @@ export function DashboardProvider({
     );
 
     // Sync to backend API
-    fetch("/api/milestones", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectId,
-        title: data.title,
-        description: data.description,
-        amount: data.amount,
-        dueDate: data.dueDate,
-        acceptanceCriteria: data.acceptanceCriteria,
+    const curr = data.currency || rawProjects.find((p) => p.id === projectId)?.currency || "USD";
+    syncOrRevert(
+      authFetch("/api/milestones", {
+        method: "POST",
+        body: JSON.stringify({
+          projectId,
+          title: data.title,
+          description: data.description,
+          amount: data.amount,
+          dueDate: data.dueDate,
+          acceptanceCriteria: data.acceptanceCriteria,
+        }),
       }),
-    }).catch((err) => console.warn("Could not sync milestone to API:", err));
-
-    const curr = data.currency || "USD";
-    const currSym = curr.toUpperCase() === "INR" ? "₹" : "$";
-    showToast(`Added Stage "${data.title}" (${currSym}${data.amount.toLocaleString()} ${curr}).`, "success");
+      "Could not add the milestone."
+    ).then((ok) => {
+      if (ok) showToast(`Added Stage "${data.title}" (${formatCurrency(data.amount, curr)}).`, "success");
+    });
   };
 
   const editMilestone = (
@@ -1448,19 +1376,21 @@ export function DashboardProvider({
     );
 
     // Sync to backend API
-    fetch(`/api/milestones/${milestoneId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectId,
-        title: updates.title,
-        description: updates.description,
-        amount: updates.amount,
-        dueDate: updates.dueDate,
+    syncOrRevert(
+      authFetch(`/api/milestones/${milestoneId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          projectId,
+          title: updates.title,
+          description: updates.description,
+          amount: updates.amount,
+          dueDate: updates.dueDate,
+        }),
       }),
-    }).catch((err) => console.warn("Could not sync milestone edit to API:", err));
-
-    showToast("Milestone updated.", "success");
+      "Could not update the milestone."
+    ).then((ok) => {
+      if (ok) showToast("Milestone updated.", "success");
+    });
   };
 
   const startMilestoneWork = (projectId: string, milestoneId: string) => {
@@ -1491,7 +1421,15 @@ export function DashboardProvider({
         };
       })
     );
-    showToast("Milestone marked as in progress.", "info");
+    syncOrRevert(
+      authFetch(`/api/milestones/${milestoneId}/start`, {
+        method: "POST",
+        body: JSON.stringify({ projectId }),
+      }),
+      "Could not start the milestone."
+    ).then((ok) => {
+      if (ok) showToast("Milestone marked as in progress.", "info");
+    });
   };
 
   const submitMilestoneDeliverables = async (
@@ -1517,19 +1455,17 @@ export function DashboardProvider({
       minute: "2-digit",
     });
 
-    let submittedMilestoneTitle = "";
-    let clientName = "";
-    let freelancerName = userProfiles.freelancer.name;
+    // Read what we need up front; state updaters below stay free of side effects.
+    const target = rawProjects.find((p) => p.id === projectId);
+    const submittedMilestoneTitle = target?.milestones.find((m) => m.id === milestoneId)?.title || "";
+    const freelancerName = target?.freelancer.name || userProfiles.freelancer.name;
 
     setRawProjects((prev) =>
       prev.map((project) => {
         if (project.id !== projectId) return project;
-        clientName = project.client.name;
-        freelancerName = project.freelancer.name;
 
         const updatedMilestones = project.milestones.map((m) => {
           if (m.id !== milestoneId) return m;
-          submittedMilestoneTitle = m.title;
 
           const newSubmission: MilestoneSubmission = {
             id: submissionId,
@@ -1571,28 +1507,11 @@ export function DashboardProvider({
       })
     );
 
-    // Call API submit route for automated Gemini review and backend database persistence
+    // Call API submit route for automated Gemini review and backend database persistence.
+    // The server identifies the freelancer from the signed-in session, not from anything we send.
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      try {
-        const supabase = getSupabaseClient();
-        const session = (await supabase?.auth.getSession())?.data?.session;
-        if (session?.access_token) {
-          headers["Authorization"] = `Bearer ${session.access_token}`;
-        }
-      } catch (_) {}
-
-      const callerId = authUser?.id || (isDemoMode ? "253b60b8-a9e0-4d3d-96af-618f78c1bf80" : undefined);
-      const callerEmail = authUser?.email || (isDemoMode ? "rohan.verma@craftdev.io" : undefined);
-      const callerMso = userProfiles.freelancer.milestoneOSId || "FL-2W8L41";
-
-      if (callerId) headers["x-user-id"] = callerId;
-      if (callerEmail) headers["x-user-email"] = callerEmail;
-      if (callerMso) headers["x-user-mso-id"] = callerMso;
-
-      const res = await fetch(`/api/milestones/${milestoneId}/submit`, {
+      const res = await authFetch(`/api/milestones/${milestoneId}/submit`, {
         method: "POST",
-        headers,
         body: JSON.stringify({
           projectId,
           notes: deliverables.notes,
@@ -1601,29 +1520,16 @@ export function DashboardProvider({
           loomVideo: deliverables.loomVideo,
           deliverableLinks: deliverables.deliverableLinks,
           attachments: deliverables.attachments,
-          userId: callerId,
-          userEmail: callerEmail,
-          milestoneOSId: callerMso,
-          isDemo: isDemoMode,
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to submit milestone work");
       }
 
       if (data.project) {
-        setRawProjects((prev) =>
-          prev.map((p) => (p.id === projectId ? data.project : p))
-        );
-        if (authUser?.id) {
-          try {
-            const current = JSON.parse(localStorage.getItem(`milestoneos_projects_${authUser.id}`) || "[]");
-            const updated = current.map((p: any) => (p.id === projectId ? data.project : p));
-            localStorage.setItem(`milestoneos_projects_${authUser.id}`, JSON.stringify(updated));
-          } catch (_) {}
-        }
+        setRawProjects((prev) => prev.map((p) => (p.id === projectId ? data.project : p)));
       }
 
       showToast(
@@ -1645,22 +1551,16 @@ export function DashboardProvider({
   };
 
   const requestChanges = (projectId: string, milestoneId: string, reason: string) => {
-    let milestoneTitle = "";
-    let freelancerName = "";
+    const target = rawProjects.find((p) => p.id === projectId);
+    const milestoneTitle = target?.milestones.find((m) => m.id === milestoneId)?.title || "";
 
     setRawProjects((prev) =>
       prev.map((project) => {
         if (project.id !== projectId) return project;
-        freelancerName = project.freelancer.name;
 
-        const updatedMilestones = project.milestones.map((m) => {
-          if (m.id !== milestoneId) return m;
-          milestoneTitle = m.title;
-          return {
-            ...m,
-            status: "changes_requested" as MilestoneStatus,
-          };
-        });
+        const updatedMilestones = project.milestones.map((m) =>
+          m.id !== milestoneId ? m : { ...m, status: "changes_requested" as MilestoneStatus }
+        );
 
         const actorName = userProfiles.client.name;
         const newLog: ActivityItem = {
@@ -1681,37 +1581,29 @@ export function DashboardProvider({
       })
     );
 
-    // Sync to backend API
-    fetch(`/api/milestones/${milestoneId}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectId,
-        action: "request_changes",
-        feedback: reason,
+    // Sync to backend API (reverts the screen and explains if the server refuses)
+    syncOrRevert(
+      authFetch(`/api/milestones/${milestoneId}/review`, {
+        method: "POST",
+        body: JSON.stringify({ projectId, action: "request_changes", feedback: reason }),
       }),
-    }).catch((err) => console.warn("Could not sync change request to API:", err));
-
-    showToast(`Changes requested for "${milestoneTitle}". Feedback sent.`, "warning");
+      "Could not send the change request."
+    ).then((ok) => {
+      if (ok) showToast(`Changes requested for "${milestoneTitle}". Feedback sent.`, "warning");
+    });
   };
 
-  const approveMilestone = (projectId: string, milestoneId: string) => {
-    let milestoneTitle = "";
-    let freelancerName = "";
+  const approveMilestone = async (projectId: string, milestoneId: string): Promise<boolean> => {
+    const target = rawProjects.find((p) => p.id === projectId);
+    const milestoneTitle = target?.milestones.find((m) => m.id === milestoneId)?.title || "";
 
     setRawProjects((prev) =>
       prev.map((project) => {
         if (project.id !== projectId) return project;
-        freelancerName = project.freelancer.name;
 
-        const updatedMilestones = project.milestones.map((m) => {
-          if (m.id !== milestoneId) return m;
-          milestoneTitle = m.title;
-          return {
-            ...m,
-            status: "approved" as MilestoneStatus,
-          };
-        });
+        const updatedMilestones = project.milestones.map((m) =>
+          m.id !== milestoneId ? m : { ...m, status: "approved" as MilestoneStatus }
+        );
 
         const actorName = userProfiles.client.name;
         const newLog: ActivityItem = {
@@ -1731,17 +1623,16 @@ export function DashboardProvider({
       })
     );
 
-    // Sync to backend API
-    fetch(`/api/milestones/${milestoneId}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        projectId,
-        action: "approve",
+    // Sync to backend API (reverts the screen and explains if the server refuses)
+    const ok = await syncOrRevert(
+      authFetch(`/api/milestones/${milestoneId}/review`, {
+        method: "POST",
+        body: JSON.stringify({ projectId, action: "approve" }),
       }),
-    }).catch((err) => console.warn("Could not sync milestone approval to API:", err));
-
-    showToast(`"${milestoneTitle}" approved! You can now release payment.`, "success");
+      "Could not approve the milestone."
+    );
+    if (ok) showToast(`"${milestoneTitle}" approved! You can now release payment.`, "success");
+    return ok;
   };
 
   const setMilestoneAudit = (
@@ -1790,54 +1681,45 @@ export function DashboardProvider({
     verifiedCaptureId: string,
     timestamp?: string
   ): string => {
-    if (!verifiedCaptureId || verifiedCaptureId.startsWith("PAYID-SBX-") && verifiedCaptureId.endsWith("-Q")) {
-      // Reject any simulated/fake capture IDs
-      if (!verifiedCaptureId) {
-        throw new Error("Cannot record payment without a verified payment capture confirmation.");
-      }
+    if (!verifiedCaptureId) {
+      throw new Error("Cannot record payment without a verified payment capture confirmation.");
     }
 
     const txId = verifiedCaptureId;
-    const nowStr =
-      timestamp ||
-      new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+    const paidDate = timestamp && !Number.isNaN(new Date(timestamp).getTime()) ? new Date(timestamp) : new Date();
+    const nowStr = paidDate.toLocaleString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
-    let paidAmount = 0;
-    let milestoneTitle = "";
-    let projectTitle = "";
-    let clientName = userProfiles.client.name;
-    let freelancerName = userProfiles.freelancer.name;
-    let currentProject: ProjectContract | undefined;
+    // Read what we need up front; the state updater below stays free of side effects.
+    const target = rawProjects.find((p) => p.id === projectId);
+    const targetMilestone = target?.milestones.find((m) => m.id === milestoneId);
+    const paidAmount = targetMilestone?.amount || 0;
+    const milestoneTitle = targetMilestone?.title || "";
+    const paidCurrency = targetMilestone?.currency || target?.currency || "USD";
+    const paidLabel = formatCurrency(paidAmount, paidCurrency);
 
     setRawProjects((prev) =>
       prev.map((project) => {
         if (project.id !== projectId) return project;
-        currentProject = project;
-        projectTitle = project.title;
-        clientName = project.client.name;
-        freelancerName = project.freelancer.name;
 
-        const updatedMilestones = project.milestones.map((m) => {
-          if (m.id !== milestoneId) return m;
-          paidAmount = m.amount;
-          milestoneTitle = m.title;
-          return {
-            ...m,
-            status: "paid" as MilestoneStatus,
-            paidAt: nowStr,
-            transactionId: txId,
-          };
-        });
+        const updatedMilestones = project.milestones.map((m) =>
+          m.id !== milestoneId
+            ? m
+            : {
+                ...m,
+                status: "paid" as MilestoneStatus,
+                paidAt: nowStr,
+                transactionId: txId,
+              }
+        );
 
         const allMilestonesPaid =
-          updatedMilestones.length > 0 &&
-          updatedMilestones.every((m) => m.status === "paid");
+          updatedMilestones.length > 0 && updatedMilestones.every((m) => m.status === "paid");
 
         const completionActivity: ActivityItem[] = allMilestonesPaid
           ? [
@@ -1847,7 +1729,7 @@ export function DashboardProvider({
                 actor: "MilestoneOS",
                 actorRole: "payment",
                 action: `Project "${project.title}" completed! All ${updatedMilestones.length} milestones paid and fully settled.`,
-                details: `100% of milestones completed. Total payout: $${(project.totalPaid + paidAmount).toLocaleString()} USD.`,
+                details: `100% of milestones completed. Total payout: ${formatCurrency(project.totalPaid + paidAmount, project.currency)}.`,
               },
             ]
           : [];
@@ -1865,7 +1747,7 @@ export function DashboardProvider({
               timestamp: "Just now",
               actor: project.client.name,
               actorRole: "payment",
-              action: `Completed payment of $${paidAmount.toLocaleString()} USD via Escrow`,
+              action: `Completed payment of ${paidLabel} via Secure Payments`,
               details: `Transaction: ${txId}`,
               milestoneTitle,
             },
@@ -1875,51 +1757,27 @@ export function DashboardProvider({
       })
     );
 
-    // Record ledger transaction
-    const newTx: TransactionRecord = {
-      id: `tx_${Date.now()}`,
-      milestoneId,
-      milestoneTitle,
-      projectId,
-      projectTitle,
-      amount: paidAmount,
-      currency: "USD",
-      paidAt: nowStr,
-      transactionId: txId,
-      status: "completed",
-      isSimulated: true,
-      payer: clientName,
-      payee: freelancerName,
-      payerId: currentProject?.clientId || authUser?.id,
-      payeeId: currentProject?.freelancerId,
-      isDemo: false,
-    };
-    setTransactions((prev) => [newTx, ...prev]);
-
-    showToast(`Payment of $${paidAmount.toLocaleString()} USD completed successfully!`, "success");
+    showToast(`Payment of ${paidLabel} completed.`, "success");
+    // The server has already recorded the verified payment and its ledger entry; pull the real records
+    // instead of inventing a local transaction.
+    refreshProjects();
     return txId;
   };
 
   const markNotificationRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
-    );
-    fetch("/api/notifications", {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)));
+    authFetch("/api/notifications", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     }).catch(() => {});
   };
 
   const clearAllNotifications = () => {
     setNotifications([]);
-    if (authUser?.id) {
-      fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ all: true, userId: authUser.id }),
-      }).catch(() => {});
-    }
+    authFetch("/api/notifications", {
+      method: "PATCH",
+      body: JSON.stringify({ all: true }),
+    }).catch(() => {});
   };
 
   const resetToFactoryDefaults = () => {
@@ -1959,6 +1817,7 @@ export function DashboardProvider({
         exitDemoMode,
         enterDemoMode,
         authUser,
+        isLoaded,
         refreshProjects,
         createProject,
         updateProject,

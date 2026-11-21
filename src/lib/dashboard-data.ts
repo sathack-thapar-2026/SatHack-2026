@@ -219,6 +219,9 @@ export function isProjectCompleted(project: ProjectContract | null | undefined):
   return project.milestones.every((m) => m.status === "paid");
 }
 
+/** Currencies the checkout can settle in. Anything else (e.g. INR) must be changed before payment. */
+export const SUPPORTED_CHECKOUT_CURRENCIES: string[] = ["USD", "EUR", "GBP", "CAD", "AUD"];
+
 export const INR_TO_USD_RATE = 85;
 
 export function getCurrencySymbol(currency?: string): string {
@@ -456,9 +459,12 @@ export function generateMilestoneOSId(): string {
 
 export function generateInvitationToken(): string {
   const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+  const bytes = new Uint8Array(16);
+  // Cryptographically secure randomness (browser and Node 19+ both provide globalThis.crypto).
+  globalThis.crypto.getRandomValues(bytes);
   let result = "";
   for (let i = 0; i < 16; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(bytes[i] % chars.length);
   }
   return `inv_${result}`;
 }

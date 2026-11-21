@@ -1,8 +1,14 @@
 /**
  * MilestoneOS — Server-Side Multi-User Database & Ledger Store
  * Single Source of Truth: Supabase PostgreSQL
- * Provides persistent project, milestone, submission, transaction, and multi-user storage
- * with full demo-data isolation and Supabase synchronization.
+ *
+ * Design notes
+ *  - Every project mutation goes through mutateProject(): it serialises writes per project
+ *    inside this process AND uses an optimistic `updated_at` check so concurrent writers
+ *    (other server instances) cannot silently overwrite each other.
+ *  - Database write errors are never swallowed: they surface as exceptions.
+ *  - Business-rule violations are thrown as DomainError (safe to show to the caller).
+ *  - This module does NOT authenticate anybody. Routes must authorise callers first.
  */
 
 import {
@@ -12,27 +18,53 @@ import {
   ProjectStatus,
   AIAssessment,
   MilestoneSubmission,
+  Milestone,
+  MilestoneStatus,
   ActivityItem,
-  MilestoneOSUser,
-  MILESTONEOS_DIRECTORY,
   extractBaseCode,
   isProjectAccepted,
+  getCurrencySymbol,
 } from "@/lib/dashboard-data";
-import { CaptureOrderResult } from "./payments";
+import type { CaptureOrderResult } from "./payments";
 import { getServerSupabase } from "./supabase";
+import { projectRoles } from "./auth";
+import { DomainError } from "./errors";
+import { newId } from "./ids";
 
 export interface ProjectFilter {
   userId?: string;
   userEmail?: string;
   milestoneOSId?: string;
   role?: "client" | "freelancer";
-  isDemo?: boolean;
   status?: string;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function isValidUUID(str?: string | null): boolean {
   if (!str) return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str);
+  return UUID_PATTERN.test(str);
+}
+
+/** Human readable timestamp used for display fields that are stored as strings. */
+function displayDateTime(input?: string | Date): string {
+  const d = input ? new Date(input) : new Date();
+  const date = Number.isNaN(d.getTime()) ? new Date() : d;
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function requireSupabase() {
+  const supabase = getServerSupabase();
+  if (!supabase) {
+    throw new DomainError(503, "The database is not configured on the server.", "DB_UNAVAILABLE");
+  }
+  return supabase;
 }
 
 function rowToProject(row: any): ProjectContract {
@@ -91,7 +123,7 @@ function rowToProject(row: any): ProjectContract {
   };
 }
 
-function projectToRow(p: ProjectContract, creatorId?: string): any {
+function projectToRow(p: ProjectContract): any {
   const cId = p.clientId || p.client?.id;
   const fId = p.freelancerId || p.freelancer?.id;
   const validCId = isValidUUID(cId) ? cId : null;
@@ -174,9 +206,14 @@ function rowToTransaction(row: any): TransactionRecord {
   };
 }
 
+// ----------------------------------------------------------------------------
+// Short-lived read cache (list views only). Single-record reads and every
+// mutation always hit the database directly so they never act on stale data.
+// ----------------------------------------------------------------------------
+
 let cachedProjects: { data: ProjectContract[]; timestamp: number } | null = null;
 let cachedTransactions: { data: TransactionRecord[]; timestamp: number } | null = null;
-const CACHE_TTL_MS = 10000; // 10s TTL for fast responses
+const CACHE_TTL_MS = 5000;
 
 export function invalidateServerCache() {
   cachedProjects = null;
@@ -188,12 +225,13 @@ async function getLiveProjects(): Promise<ProjectContract[]> {
   if (cachedProjects && now - cachedProjects.timestamp < CACHE_TTL_MS) {
     return cachedProjects.data;
   }
-  const supabase = getServerSupabase();
-  if (!supabase) return cachedProjects?.data || [];
+  const supabase = requireSupabase();
   const { data, error } = await supabase.from("projects").select("*").order("updated_at", { ascending: false });
   if (error || !data) {
     console.error("Supabase getLiveProjects error:", error);
-    return cachedProjects?.data || [];
+    // Serve slightly stale data rather than failing the dashboard, but NEVER report an empty list on error.
+    if (cachedProjects) return cachedProjects.data;
+    throw new Error("Failed to load projects.");
   }
   const mapped = data.map(rowToProject);
   cachedProjects = { data: mapped, timestamp: now };
@@ -205,160 +243,170 @@ async function getLiveTransactions(): Promise<TransactionRecord[]> {
   if (cachedTransactions && now - cachedTransactions.timestamp < CACHE_TTL_MS) {
     return cachedTransactions.data;
   }
-  const supabase = getServerSupabase();
-  if (!supabase) return cachedTransactions?.data || [];
+  const supabase = requireSupabase();
   const { data, error } = await supabase.from("transactions").select("*").order("paid_at", { ascending: false });
   if (error || !data) {
     console.error("Supabase getLiveTransactions error:", error);
-    return cachedTransactions?.data || [];
+    if (cachedTransactions) return cachedTransactions.data;
+    throw new Error("Failed to load transactions.");
   }
   const mapped = data.map(rowToTransaction);
   cachedTransactions = { data: mapped, timestamp: now };
   return mapped;
 }
 
+// ----------------------------------------------------------------------------
+// Safe project mutation: per-project lock + optimistic concurrency + retry.
+// ----------------------------------------------------------------------------
+
+const projectLockTails = new Map<string, Promise<void>>();
+
+async function withProjectLock<T>(projectId: string, fn: () => Promise<T>): Promise<T> {
+  const previous = projectLockTails.get(projectId) ?? Promise.resolve();
+  let release!: () => void;
+  const mine = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const tail = previous.then(() => mine);
+  projectLockTails.set(projectId, tail);
+  try {
+    await previous;
+    return await fn();
+  } finally {
+    release();
+    if (projectLockTails.get(projectId) === tail) projectLockTails.delete(projectId);
+  }
+}
+
+const MAX_WRITE_ATTEMPTS = 4;
+
+async function mutateProject<T>(
+  projectId: string,
+  mutator: (project: ProjectContract) => T | Promise<T>
+): Promise<{ project: ProjectContract; result: T } | null> {
+  const supabase = requireSupabase();
+
+  return withProjectLock(projectId, async () => {
+    for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt++) {
+      const { data, error } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
+      if (error) throw new Error(`Failed to load project ${projectId}: ${error.message}`);
+      if (!data) return null;
+
+      const project = rowToProject(data);
+      const result = await mutator(project);
+      const row = projectToRow(project);
+
+      let query = supabase.from("projects").update(row).eq("id", projectId);
+      if (data.updated_at) query = query.eq("updated_at", data.updated_at);
+      const { data: written, error: writeError } = await query.select("id");
+      if (writeError) throw new Error(`Failed to save project ${projectId}: ${writeError.message}`);
+
+      if (written && written.length > 0) {
+        invalidateServerCache();
+        return { project, result };
+      }
+      // Another writer changed the row between our read and write: reload and re-apply.
+    }
+    throw new DomainError(
+      409,
+      "This project was modified by someone else at the same time. Please try again.",
+      "CONFLICT"
+    );
+  });
+}
+
+// ----------------------------------------------------------------------------
+// Business-rule guards shared by several mutations.
+// ----------------------------------------------------------------------------
+
+const CLOSED_PROJECT_STATUSES: ProjectStatus[] = ["rejected", "archived", "completed"];
+const PRE_ACCEPTANCE_STATUSES: ProjectStatus[] = ["draft", "awaiting_acceptance", "changes_requested"];
+
+function assertProjectWorkable(project: ProjectContract) {
+  if (PRE_ACCEPTANCE_STATUSES.includes(project.status)) {
+    throw new DomainError(
+      403,
+      "Work submissions are locked until the project proposal is accepted and active.",
+      "PROJECT_NOT_ACTIVE"
+    );
+  }
+  if (CLOSED_PROJECT_STATUSES.includes(project.status)) {
+    throw new DomainError(409, `This project is ${project.status} and can no longer be changed.`, "PROJECT_CLOSED");
+  }
+}
+
+function findMilestone(project: ProjectContract, milestoneId: string): Milestone {
+  const milestone = project.milestones.find((m) => m.id === milestoneId);
+  if (!milestone) throw new DomainError(404, "Milestone not found.", "NOT_FOUND");
+  return milestone;
+}
+
+const SUBMITTABLE: MilestoneStatus[] = ["not_started", "in_progress", "changes_requested", "revision_requested", "submitted"];
+const REVIEWABLE: MilestoneStatus[] = ["submitted", "awaiting_client_approval", "under_ai_review"];
+export const PAYABLE_MILESTONE_STATUSES: MilestoneStatus[] = ["approved", "payment_pending"];
+
+function newActivity(partial: Omit<ActivityItem, "id" | "timestamp">): ActivityItem {
+  return { id: newId("act"), timestamp: "Just now", ...partial };
+}
+
+// ----------------------------------------------------------------------------
+// Public data API
+// ----------------------------------------------------------------------------
+
 export const db = {
   /**
-   * Retrieves projects scoped strictly to the authenticated user or demo sandbox.
-   * Supabase PostgreSQL is the authoritative single source of truth with 10s server cache.
+   * Projects visible to a verified user (client or freelancer side).
+   * Never returns anything when no identity is supplied.
    */
   async getProjects(filter?: ProjectFilter): Promise<ProjectContract[]> {
-    const all = await getLiveProjects();
-    const isDemo = Boolean(filter?.isDemo);
     const userId = filter?.userId?.trim();
     const userEmail = filter?.userEmail?.trim().toLowerCase();
+    const userBaseCode = extractBaseCode(filter?.milestoneOSId?.trim().toUpperCase());
     const role = filter?.role;
     const status = filter?.status;
 
-    // 1. Explicit Demo Mode: Return all demo projects
-    if (isDemo) {
-      let demos = all.filter((p) => p.isDemo);
-      if (status) demos = demos.filter((p) => p.status === status);
-      return demos;
-    }
+    if (!userId && !userEmail && !userBaseCode) return [];
 
-    // 2. Real Registered Users: Filter projects where user is authorized participant
-    const userMsoId = filter?.milestoneOSId?.trim().toUpperCase();
-    const userBaseCode = extractBaseCode(userMsoId);
+    const all = await getLiveProjects();
+    return all.filter((p) => {
+      if (status && p.status !== status) return false;
+      if (p.status === "rejected" && status !== "rejected") return false;
 
-    if (userId || userEmail || userMsoId) {
-      return all.filter((p) => {
-        if (status && p.status !== status) return false;
-        if (p.status === "rejected" && status !== "rejected") return false;
-
-        const clientBase = extractBaseCode(p.client?.milestoneOSId);
-        const freelancerBase = extractBaseCode(p.freelancer?.milestoneOSId);
-
-        const isClient =
-          (userId && (p.clientId === userId || p.client?.id === userId)) ||
-          (userEmail && p.client?.email?.toLowerCase() === userEmail) ||
-          (userMsoId && p.client?.milestoneOSId?.toUpperCase() === userMsoId) ||
-          (userBaseCode && clientBase === userBaseCode);
-
-        const isFreelancer =
-          (userId && (p.freelancerId === userId || p.freelancer?.id === userId)) ||
-          (userEmail && p.freelancer?.email?.toLowerCase() === userEmail) ||
-          (userMsoId && p.freelancer?.milestoneOSId?.toUpperCase() === userMsoId) ||
-          (userBaseCode && freelancerBase === userBaseCode);
-
-        if (role === "client") return isClient;
-        if (role === "freelancer") return isFreelancer;
-        return isClient || isFreelancer;
+      const { isClient, isFreelancer } = projectRoles(p, {
+        id: userId || "",
+        email: userEmail || "",
+        baseCode: userBaseCode,
       });
-    }
 
-    // 3. Fallback for unauthenticated requests: never leak all projects
-    return [];
+      if (role === "client") return isClient;
+      if (role === "freelancer") return isFreelancer;
+      return isClient || isFreelancer;
+    });
   },
 
   /**
-   * Retrieves a single project by ID, verifying user authorization if authUser is provided.
-   * If authUser is not provided and allowUnauthenticated is false, private projects return undefined.
+   * Fresh read of a single project. NO access check is performed here —
+   * routes must authorise the caller (assertParticipant etc.) before using the result.
    */
-  async getProjectById(
-    id: string,
-    authUser?: { id?: string; email?: string; milestoneOSId?: string; isDemo?: boolean },
-    allowUnauthenticated = false
-  ): Promise<ProjectContract | undefined> {
-    const all = await getLiveProjects();
-    const project = all.find((p) => p.id === id);
-    if (!project) return undefined;
-
-    if (authUser) {
-      if (project.isDemo && authUser.isDemo) {
-        return project;
-      }
-      if (project.isDemo && !authUser.isDemo) {
-        return undefined;
-      }
-
-      const uId = authUser.id;
-      const uEmail = authUser.email?.toLowerCase();
-      const uMso = authUser.milestoneOSId?.trim().toUpperCase();
-      const uBase = extractBaseCode(uMso);
-
-      const clientBase = extractBaseCode(project.client?.milestoneOSId);
-      const freelancerBase = extractBaseCode(project.freelancer?.milestoneOSId);
-
-      const isAuthorized =
-        (uId &&
-          (project.clientId === uId ||
-            project.freelancerId === uId ||
-            project.client?.id === uId ||
-            project.freelancer?.id === uId)) ||
-        (uEmail &&
-          (project.client?.email?.toLowerCase() === uEmail ||
-            project.freelancer?.email?.toLowerCase() === uEmail)) ||
-        (uMso &&
-          (project.client?.milestoneOSId?.toUpperCase() === uMso ||
-            project.freelancer?.milestoneOSId?.toUpperCase() === uMso)) ||
-        (uBase && (clientBase === uBase || freelancerBase === uBase));
-
-      if (isAuthorized) return project;
-      return undefined;
-    }
-
-    if (allowUnauthenticated) {
-      return project;
-    }
-
-    // By default, unauthenticated callers can only view active public invitations
-    if (project.isPublicInvitation && project.invitationStatus === "active") {
-      return project;
-    }
-
-    return undefined;
-  },
-
-  findUserByBaseCode(codeOrId: string): MilestoneOSUser | null {
-    if (!codeOrId) return null;
-    const base = extractBaseCode(codeOrId);
-    return (
-      MILESTONEOS_DIRECTORY.find((u) => {
-        const uBase = extractBaseCode(u.milestoneOSId) || extractBaseCode(u.baseCode);
-        return uBase === base;
-      }) || null
-    );
-  },
-
-  findUserByMilestoneOSId(id: string): MilestoneOSUser | null {
-    return this.findUserByBaseCode(id);
+  async getProjectById(id: string): Promise<ProjectContract | undefined> {
+    const supabase = requireSupabase();
+    const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
+    if (error) throw new Error(`Failed to load project: ${error.message}`);
+    return data ? rowToProject(data) : undefined;
   },
 
   async getProjectByInvitationToken(token: string): Promise<ProjectContract | null> {
     if (!token) return null;
-    const supabase = getServerSupabase();
-    if (!supabase) return null;
-
+    const supabase = requireSupabase();
     const { data, error } = await supabase.from("projects").select("*").eq("invitation_token", token).maybeSingle();
-    if (error || !data) return null;
-    return rowToProject(data);
+    if (error) throw new Error(`Failed to load invitation: ${error.message}`);
+    return data ? rowToProject(data) : null;
   },
 
   async claimInvitation(
     token: string,
     claimingUser: {
-      id?: string;
+      id: string;
       name: string;
       email: string;
       avatar: string;
@@ -367,101 +415,101 @@ export const db = {
       companyOrTitle?: string;
     }
   ): Promise<ProjectContract | null> {
-    const supabase = getServerSupabase();
-    if (!supabase) return null;
+    const existing = await db.getProjectByInvitationToken(token);
+    if (!existing) return null;
 
-    const { data } = await supabase.from("projects").select("*").eq("invitation_token", token).maybeSingle();
-    if (!data) return null;
-
-    const project = rowToProject(data);
-    if (project.invitationStatus === "revoked") return null;
-
-    const isClientSender = project.initiatedBy === "client";
-    const nowStr = new Date().toISOString();
-
-    if (isClientSender) {
-      project.freelancer = {
-        id: claimingUser.id,
-        name: claimingUser.name,
-        email: claimingUser.email,
-        avatar: claimingUser.avatar,
-        title: claimingUser.companyOrTitle || "Freelancer",
-        rating: 5.0,
-        milestoneOSId: claimingUser.milestoneOSId,
-      };
-      project.freelancerId = claimingUser.id;
-    } else {
-      project.client = {
-        id: claimingUser.id,
-        name: claimingUser.name,
-        email: claimingUser.email,
-        avatar: claimingUser.avatar,
-        company: claimingUser.companyOrTitle || "Client Organization",
-        milestoneOSId: claimingUser.milestoneOSId,
-      };
-      project.clientId = claimingUser.id;
-    }
-
-    project.status = "active";
-    project.proposalStatus = "accepted";
-    project.acceptedAt = nowStr;
-    project.acceptedByMilestoneOSId = claimingUser.milestoneOSId;
-    project.termsAgreed = true;
-    project.invitationStatus = "claimed";
-
-    project.milestones.forEach((m, idx) => {
-      if (!m.status || m.status === "not_started") {
-        m.status = idx === 0 ? "in_progress" : "not_started";
+    const outcome = await mutateProject(existing.id, (project) => {
+      if (project.invitationStatus === "revoked") {
+        throw new DomainError(410, "This invitation has been revoked.", "REVOKED");
       }
+      if (project.invitationStatus === "claimed" || project.status === "active" || project.status === "completed") {
+        throw new DomainError(409, "This proposal has already been accepted.", "ALREADY_CLAIMED");
+      }
+      if (project.status === "rejected" || project.status === "archived") {
+        throw new DomainError(410, "This proposal is no longer available.", "UNAVAILABLE");
+      }
+      if (project.invitationExpiresAt && new Date(project.invitationExpiresAt).getTime() < Date.now()) {
+        throw new DomainError(410, "This invitation link has expired.", "EXPIRED");
+      }
+
+      const isClientSender = project.initiatedBy === "client";
+      if (isClientSender) {
+        project.freelancer = {
+          id: claimingUser.id,
+          name: claimingUser.name,
+          email: claimingUser.email,
+          avatar: claimingUser.avatar,
+          title: claimingUser.companyOrTitle || "Freelancer",
+          rating: 5.0,
+          milestoneOSId: claimingUser.milestoneOSId,
+        };
+        project.freelancerId = claimingUser.id;
+      } else {
+        project.client = {
+          id: claimingUser.id,
+          name: claimingUser.name,
+          email: claimingUser.email,
+          avatar: claimingUser.avatar,
+          company: claimingUser.companyOrTitle || "Client Organization",
+          milestoneOSId: claimingUser.milestoneOSId,
+        };
+        project.clientId = claimingUser.id;
+      }
+
+      project.status = "active";
+      project.proposalStatus = "accepted";
+      project.acceptedAt = new Date().toISOString();
+      project.acceptedByMilestoneOSId = claimingUser.milestoneOSId;
+      project.termsAgreed = true;
+      project.invitationStatus = "claimed";
+
+      project.milestones.forEach((m, idx) => {
+        if (!m.status || m.status === "not_started") {
+          m.status = idx === 0 ? "in_progress" : "not_started";
+        }
+      });
+
+      project.activityLog.unshift(
+        newActivity({
+          action: `${claimingUser.name} accepted the project proposal via private invitation link. Agreement is now active.`,
+          actor: claimingUser.name,
+          actorRole: claimingUser.role,
+        })
+      );
+      return isClientSender;
     });
 
-    const activity: ActivityItem = {
-      id: `act_${Date.now()}`,
-      action: `${claimingUser.name} accepted the project proposal via private invitation link. Agreement is now active.`,
-      actor: claimingUser.name,
-      actorRole: claimingUser.role,
-      timestamp: "Just now",
-    };
-    project.activityLog.unshift(activity);
+    if (!outcome) return null;
 
-    const row = projectToRow(project);
-    await supabase.from("projects").upsert(row, { onConflict: "id" });
-
-    if (claimingUser.id && isValidUUID(claimingUser.id)) {
-      try {
-        await supabase.from("project_members").upsert(
-          {
-            project_id: project.id,
-            user_id: claimingUser.id,
-            project_role: isClientSender ? "freelancer" : "client",
-            membership_status: "accepted",
-          },
-          { onConflict: "project_id,user_id,project_role" }
-        );
-      } catch (_) {}
+    const supabase = requireSupabase();
+    if (isValidUUID(claimingUser.id)) {
+      const { error } = await supabase.from("project_members").upsert(
+        {
+          project_id: outcome.project.id,
+          user_id: claimingUser.id,
+          project_role: outcome.result ? "freelancer" : "client",
+          membership_status: "accepted",
+        },
+        { onConflict: "project_id,user_id,project_role" }
+      );
+      if (error) console.warn("Could not record project membership:", error.message);
     }
-
-    invalidateServerCache();
-    return project;
+    return outcome.project;
   },
 
   async revokeInvitation(token: string): Promise<boolean> {
-    if (!token) return false;
-    const supabase = getServerSupabase();
-    if (!supabase) return false;
+    const existing = await db.getProjectByInvitationToken(token);
+    if (!existing) return false;
 
-    const { error } = await supabase
-      .from("projects")
-      .update({
-        invitation_status: "revoked",
-        status: "rejected",
-        proposal_status: "rejected",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("invitation_token", token);
-
-    invalidateServerCache();
-    return !error;
+    const outcome = await mutateProject(existing.id, (project) => {
+      if (project.invitationStatus === "claimed" || project.status === "active" || project.status === "completed") {
+        throw new DomainError(409, "This proposal was already accepted and can no longer be revoked.", "ALREADY_CLAIMED");
+      }
+      project.invitationStatus = "revoked";
+      project.status = "rejected";
+      project.proposalStatus = "rejected";
+    });
+    return Boolean(outcome);
   },
 
   async createProject(project: ProjectContract, creatorId?: string): Promise<ProjectContract> {
@@ -485,44 +533,31 @@ export const db = {
       if (project.freelancer) project.freelancer.id = fid;
     }
 
-    if (!project.invitationToken) {
-      project.invitationToken = `inv_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      project.invitationStatus = "active";
+    const supabase = requireSupabase();
+    const row = projectToRow(project);
+    const { error } = await supabase.from("projects").insert(row);
+    if (error) {
+      console.error("Supabase createProject error:", error);
+      throw new Error(`Failed to save project to Supabase: ${error.message}`);
     }
 
-    const supabase = getServerSupabase();
-    if (supabase) {
-      const row = projectToRow(project, creatorId);
-      const { error } = await supabase.from("projects").upsert(row, { onConflict: "id" });
-      if (error) {
-        console.error("Supabase createProject error:", error);
-        throw new Error(`Failed to save project to Supabase: ${error.message}`);
-      }
-
-      // Automatically create persistent Supabase notification for the recipient
-      const recipientId = project.initiatedBy === "client" ? project.freelancerId : project.clientId;
-      const senderName = project.initiatedBy === "client" ? project.client?.name : project.freelancer?.name;
-      const currSym = (project.currency || "USD") === "INR" ? "₹" : "$";
-      if (recipientId && isValidUUID(recipientId)) {
-        try {
-          await supabase.from("notifications").upsert(
-            {
-              id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-              user_id: recipientId,
-              project_id: project.id,
-              title: project.initiatedBy === "client" ? "Project Assignment Received" : "Incoming Project Proposal",
-              message: `${senderName || "Counterparty"} sent you a project proposal: "${project.title}" (${currSym}${project.totalBudget.toLocaleString()} ${project.currency || "USD"}). Review to accept.`,
-              type: "proposal",
-              unread: true,
-              is_demo: Boolean(project.isDemo),
-              created_at: new Date().toISOString(),
-            },
-            { onConflict: "id" }
-          );
-        } catch (notifErr) {
-          console.warn("Could not insert recipient notification:", notifErr);
-        }
-      }
+    // Persistent notification for the recipient
+    const recipientId = project.initiatedBy === "client" ? project.freelancerId : project.clientId;
+    const senderName = project.initiatedBy === "client" ? project.client?.name : project.freelancer?.name;
+    const currSym = getCurrencySymbol(project.currency);
+    if (recipientId && isValidUUID(recipientId) && project.status !== "draft") {
+      const { error: notifErr } = await supabase.from("notifications").insert({
+        id: newId("notif"),
+        user_id: recipientId,
+        project_id: project.id,
+        title: project.initiatedBy === "client" ? "Project Assignment Received" : "Incoming Project Proposal",
+        message: `${senderName || "Counterparty"} sent you a project proposal: "${project.title}" (${currSym}${project.totalBudget.toLocaleString()} ${project.currency || "USD"}). Review to accept.`,
+        type: "proposal",
+        unread: true,
+        is_demo: Boolean(project.isDemo),
+        created_at: new Date().toISOString(),
+      });
+      if (notifErr) console.warn("Could not insert recipient notification:", notifErr.message);
     }
 
     invalidateServerCache();
@@ -530,106 +565,81 @@ export const db = {
   },
 
   async deleteProject(id: string): Promise<boolean> {
-    const supabase = getServerSupabase();
-    if (supabase) {
-      try {
-        await supabase.from("projects").delete().eq("id", id);
-      } catch (e) {
-        console.error("Supabase deleteProject projects error:", e);
-      }
-      try {
-        await supabase.from("notifications").delete().eq("project_id", id);
-      } catch (_) {}
-    }
+    const supabase = requireSupabase();
+    const { error: notifError } = await supabase.from("notifications").delete().eq("project_id", id);
+    if (notifError) console.warn("Could not delete project notifications:", notifError.message);
+    const { error } = await supabase.from("projects").delete().eq("id", id);
     invalidateServerCache();
+    if (error) {
+      console.error("Supabase deleteProject error:", error);
+      return false;
+    }
     return true;
   },
 
+  /** Applies already-validated field updates. The project id can never be changed here. */
   async updateProject(id: string, updates: Partial<ProjectContract>): Promise<ProjectContract | null> {
-    const supabase = getServerSupabase();
-    if (!supabase) return null;
-
-    const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
-    if (error || !data) return null;
-
-    const current = rowToProject(data);
-    const updated: ProjectContract = { ...current, ...updates };
-    const row = projectToRow(updated);
-    const { error: upsertErr } = await supabase.from("projects").upsert(row, { onConflict: "id" });
-    if (upsertErr) {
-      console.error("Supabase updateProject error:", upsertErr);
-      return null;
-    }
-    invalidateServerCache();
-    return updated;
+    const outcome = await mutateProject(id, (project) => {
+      const { id: _ignoredId, ...safe } = updates as any;
+      Object.assign(project, safe);
+    });
+    return outcome ? outcome.project : null;
   },
 
-  async updateProjectStatus(
-    id: string,
-    status: ProjectStatus,
-    feedback?: string
-  ): Promise<ProjectContract | null> {
-    const supabase = getServerSupabase();
-    if (!supabase) return null;
+  async updateProjectStatus(id: string, status: ProjectStatus, feedback?: string): Promise<ProjectContract | null> {
+    const outcome = await mutateProject(id, (project) => {
+      project.status = status;
+      if (status === "active") {
+        project.termsAgreed = true;
+        project.proposalStatus = "accepted";
+        project.invitationStatus = "claimed";
+        project.acceptedAt = new Date().toISOString();
+        project.milestones.forEach((m, idx) => {
+          if (m.status === "not_started" && idx === 0) {
+            m.status = "in_progress";
+          }
+        });
+      } else if (status === "changes_requested") {
+        project.proposalStatus = "changes_requested";
+        project.proposalFeedback = feedback;
+      } else if (status === "rejected") {
+        project.proposalStatus = "rejected";
+      }
 
-    const { data } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
-    if (!data) return null;
+      const actorName = project.initiatedBy === "client" ? project.freelancer.name : project.client.name;
+      const actorRole = project.initiatedBy === "client" ? "freelancer" : "client";
+      project.activityLog.unshift(
+        newActivity({
+          action:
+            status === "active"
+              ? `${actorName} accepted the project proposal. Contract terms are now mutually agreed and active.`
+              : status === "changes_requested"
+              ? `${actorName} requested revisions: "${feedback}".`
+              : `${actorName} declined the project proposal.`,
+          actor: actorName,
+          actorRole,
+        })
+      );
+      return { actorName };
+    });
+    if (!outcome) return null;
+    const project = outcome.project;
+    const actorName = outcome.result.actorName;
 
-    const project = rowToProject(data);
-    project.status = status;
-    if (status === "active") {
-      project.termsAgreed = true;
-      project.proposalStatus = "accepted";
-      project.invitationStatus = "claimed";
-      project.acceptedAt = new Date().toISOString();
-      project.milestones.forEach((m, idx) => {
-        if (m.status === "not_started" && idx === 0) {
-          m.status = "in_progress";
-        }
-      });
-    } else if (status === "changes_requested") {
-      project.proposalStatus = "changes_requested";
-      project.proposalFeedback = feedback;
-    } else if (status === "rejected") {
-      project.proposalStatus = "rejected";
-    }
-
-    const actorName = project.initiatedBy === "client" ? project.freelancer.name : project.client.name;
-    const actorRole = project.initiatedBy === "client" ? "freelancer" : "client";
-    const activity: ActivityItem = {
-      id: `act_${Date.now()}`,
-      action:
-        status === "active"
-          ? `${actorName} accepted the project proposal. Contract terms are now mutually agreed and active.`
-          : status === "changes_requested"
-          ? `${actorName} requested revisions: "${feedback}".`
-          : `${actorName} declined the project proposal.`,
-      actor: actorName,
-      actorRole,
-      timestamp: "Just now",
-    };
-    project.activityLog.unshift(activity);
-
-    const row = projectToRow(project);
-    const { error: updateError } = await supabase.from("projects").upsert(row, { onConflict: "id" });
-    if (updateError) {
-      console.error("Supabase updateProjectStatus error:", updateError);
-      throw new Error(`Failed to update project status in Supabase: ${updateError.message}`);
-    }
-
-    // Mark previous proposal notifications for this project as read
-    try {
-      await supabase
-        .from("notifications")
-        .update({ unread: false })
-        .eq("project_id", project.id);
-    } catch (_) {}
+    const supabase = requireSupabase();
+    // Mark earlier proposal notifications for this project as read
+    const { error: readErr } = await supabase
+      .from("notifications")
+      .update({ unread: false })
+      .eq("project_id", project.id)
+      .eq("type", "proposal");
+    if (readErr) console.warn("Could not mark proposal notifications read:", readErr.message);
 
     // Notify the proposer of the decision
     const proposerId = project.initiatedBy === "client" ? project.clientId : project.freelancerId;
     if (proposerId) {
-      const notif: NotificationItem = {
-        id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      await db.createNotification({
+        id: newId("notif"),
         timestamp: "Just now",
         title:
           status === "active"
@@ -646,12 +656,31 @@ export const db = {
         projectId: project.id,
         userId: proposerId,
         isDemo: Boolean(project.isDemo),
-      };
-      await db.createNotification(notif);
+      });
     }
-
-    invalidateServerCache();
     return project;
+  },
+
+  async startMilestone(projectId: string, milestoneId: string, actorName: string) {
+    const outcome = await mutateProject(projectId, (project) => {
+      assertProjectWorkable(project);
+      const milestone = findMilestone(project, milestoneId);
+      if (milestone.status === "in_progress") return milestone; // idempotent
+      if (milestone.status !== "not_started") {
+        throw new DomainError(409, "Only milestones that have not started can be started.", "BAD_STATE");
+      }
+      milestone.status = "in_progress";
+      project.activityLog.unshift(
+        newActivity({
+          action: `${actorName} started work on "${milestone.title}".`,
+          actor: actorName,
+          actorRole: "freelancer",
+          milestoneTitle: milestone.title,
+        })
+      );
+      return milestone;
+    });
+    return outcome ? { project: outcome.project, milestone: outcome.result } : null;
   },
 
   async submitMilestoneWork(
@@ -659,66 +688,58 @@ export const db = {
     milestoneId: string,
     submission: MilestoneSubmission,
     audit?: AIAssessment
-  ): Promise<{ project: ProjectContract; milestone: any } | null> {
-    const supabase = getServerSupabase();
-    if (!supabase) return null;
+  ): Promise<{ project: ProjectContract; milestone: Milestone } | null> {
+    const outcome = await mutateProject(projectId, (project) => {
+      assertProjectWorkable(project);
+      const milestone = findMilestone(project, milestoneId);
+      if (!SUBMITTABLE.includes(milestone.status)) {
+        throw new DomainError(
+          409,
+          milestone.status === "paid"
+            ? "This milestone has already been paid."
+            : "This milestone has already been approved and can no longer receive submissions.",
+          "BAD_STATE"
+        );
+      }
 
-    const { data } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
-    if (!data) return null;
+      milestone.submissions = milestone.submissions || [];
+      submission.version = milestone.submissions.length + 1;
+      milestone.submissions.push(submission);
+      milestone.status = "submitted";
+      if (audit) {
+        milestone.latestAudit = audit;
+        submission.aiAssessment = audit;
+      } else {
+        milestone.latestAudit = undefined;
+      }
 
-    const project = rowToProject(data);
-    const milestone = project.milestones.find((m) => m.id === milestoneId);
-    if (!milestone) return null;
-
-    milestone.submissions.push(submission);
-    milestone.status = "submitted";
-    if (audit) {
-      milestone.latestAudit = audit;
-      submission.aiAssessment = audit;
-    }
-
-    const activity: ActivityItem = {
-      id: `act_${Date.now()}`,
-      action: `Submitted work for Stage 0${milestone.stageNumber}: ${milestone.title}`,
-      actor: project.freelancer.name,
-      actorRole: "freelancer",
-      timestamp: "Just now",
-      milestoneTitle: milestone.title,
-    };
-    project.activityLog.unshift(activity);
-
-    const row = projectToRow(project);
-    await supabase.from("projects").upsert(row, { onConflict: "id" });
-
-    invalidateServerCache();
-    return { project, milestone };
+      project.activityLog.unshift(
+        newActivity({
+          action: `Submitted work for Stage 0${milestone.stageNumber}: ${milestone.title}`,
+          actor: project.freelancer.name,
+          actorRole: "freelancer",
+          milestoneTitle: milestone.title,
+        })
+      );
+      return milestone;
+    });
+    return outcome ? { project: outcome.project, milestone: outcome.result } : null;
   },
 
   async setMilestoneAudit(
     projectId: string,
     milestoneId: string,
     audit: AIAssessment
-  ): Promise<{ project: ProjectContract; milestone: any } | null> {
-    const supabase = getServerSupabase();
-    if (!supabase) return null;
-
-    const { data } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
-    if (!data) return null;
-
-    const project = rowToProject(data);
-    const milestone = project.milestones.find((m) => m.id === milestoneId);
-    if (!milestone) return null;
-
-    milestone.latestAudit = audit;
-    if (milestone.submissions && milestone.submissions.length > 0) {
-      milestone.submissions[milestone.submissions.length - 1].aiAssessment = audit;
-    }
-
-    const row = projectToRow(project);
-    await supabase.from("projects").upsert(row, { onConflict: "id" });
-
-    invalidateServerCache();
-    return { project, milestone };
+  ): Promise<{ project: ProjectContract; milestone: Milestone } | null> {
+    const outcome = await mutateProject(projectId, (project) => {
+      const milestone = findMilestone(project, milestoneId);
+      milestone.latestAudit = audit;
+      if (milestone.submissions && milestone.submissions.length > 0) {
+        milestone.submissions[milestone.submissions.length - 1].aiAssessment = audit;
+      }
+      return milestone;
+    });
+    return outcome ? { project: outcome.project, milestone: outcome.result } : null;
   },
 
   async reviewMilestone(
@@ -726,145 +747,152 @@ export const db = {
     milestoneId: string,
     action: "approve" | "request_changes",
     feedback?: string
-  ): Promise<{ project: ProjectContract; milestone: any } | null> {
-    const supabase = getServerSupabase();
-    if (!supabase) return null;
+  ): Promise<{ project: ProjectContract; milestone: Milestone } | null> {
+    const outcome = await mutateProject(projectId, (project) => {
+      assertProjectWorkable(project);
+      const milestone = findMilestone(project, milestoneId);
+      if (!REVIEWABLE.includes(milestone.status)) {
+        throw new DomainError(
+          409,
+          milestone.status === "paid" || milestone.status === "approved"
+            ? "This milestone has already been approved."
+            : "There is no submitted work on this milestone to review yet.",
+          "BAD_STATE"
+        );
+      }
 
-    const { data } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
-    if (!data) return null;
-
-    const project = rowToProject(data);
-    const milestone = project.milestones.find((m) => m.id === milestoneId);
-    if (!milestone) return null;
-
-    if (action === "approve") {
-      milestone.status = "approved";
-      const activity: ActivityItem = {
-        id: `act_${Date.now()}`,
-        action: `Approved Stage 0${milestone.stageNumber}: ${milestone.title}. Ready for payment release.`,
-        actor: project.client.name,
-        actorRole: "client",
-        timestamp: "Just now",
-        milestoneTitle: milestone.title,
-      };
-      project.activityLog.unshift(activity);
-    } else {
-      milestone.status = "changes_requested";
-      const activity: ActivityItem = {
-        id: `act_${Date.now()}`,
-        action: `Requested revisions on Stage 0${milestone.stageNumber}: ${milestone.title}`,
-        actor: project.client.name,
-        actorRole: "client",
-        timestamp: "Just now",
-        details: feedback,
-        milestoneTitle: milestone.title,
-      };
-      project.activityLog.unshift(activity);
-    }
-
-    const row = projectToRow(project);
-    await supabase.from("projects").upsert(row, { onConflict: "id" });
-
-    invalidateServerCache();
-    return { project, milestone };
+      if (action === "approve") {
+        milestone.status = "approved";
+        project.activityLog.unshift(
+          newActivity({
+            action: `Approved Stage 0${milestone.stageNumber}: ${milestone.title}. Ready for payment release.`,
+            actor: project.client.name,
+            actorRole: "client",
+            milestoneTitle: milestone.title,
+          })
+        );
+      } else {
+        milestone.status = "changes_requested";
+        project.activityLog.unshift(
+          newActivity({
+            action: `Requested revisions on Stage 0${milestone.stageNumber}: ${milestone.title}`,
+            actor: project.client.name,
+            actorRole: "client",
+            details: feedback,
+            milestoneTitle: milestone.title,
+          })
+        );
+      }
+      return milestone;
+    });
+    return outcome ? { project: outcome.project, milestone: outcome.result } : null;
   },
 
+  /**
+   * Records a verified, completed payment capture. Idempotent: recording the same capture
+   * twice returns the existing transaction instead of double-counting.
+   */
   async recordPayment(
     projectId: string,
     milestoneId: string,
     capture: CaptureOrderResult
-  ): Promise<{ project: ProjectContract; milestone: any; transaction: TransactionRecord } | null> {
-    const supabase = getServerSupabase();
-    if (!supabase) return null;
+  ): Promise<{ project: ProjectContract; milestone: Milestone; transaction: TransactionRecord } | null> {
+    const supabase = requireSupabase();
+    const txId = `tx_${capture.captureId}`;
 
-    const { data } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
-    if (!data) return null;
+    const outcome = await mutateProject(projectId, (project) => {
+      const milestone = findMilestone(project, milestoneId);
 
-    const project = rowToProject(data);
-    const milestone = project.milestones.find((m) => m.id === milestoneId);
-    if (!milestone) return null;
+      if (milestone.status === "paid") {
+        if (milestone.transactionId === capture.captureId) {
+          return { milestone, alreadyRecorded: true };
+        }
+        throw new DomainError(409, "Milestone has already been paid and settled.", "ALREADY_PAID");
+      }
+      if (!PAYABLE_MILESTONE_STATUSES.includes(milestone.status)) {
+        throw new DomainError(409, "This milestone must be approved before it can be paid.", "BAD_STATE");
+      }
 
-    milestone.status = "paid";
-    milestone.paidAt = capture.timestamp || new Date().toISOString();
-    milestone.transactionId = capture.captureId;
+      const paidAtDisplay = displayDateTime(capture.timestamp);
+      milestone.status = "paid";
+      milestone.paidAt = paidAtDisplay;
+      milestone.transactionId = capture.captureId;
 
-    // Update project totals
-    project.totalPaid = (project.totalPaid || 0) + milestone.amount;
-    project.escrowReleased = (project.escrowReleased || 0) + milestone.amount;
+      project.totalPaid = (project.totalPaid || 0) + milestone.amount;
+      project.escrowReleased = (project.escrowReleased || 0) + milestone.amount;
+      if (project.milestones.every((m) => m.status === "paid")) {
+        project.status = "completed";
+      }
 
-    const allPaid = project.milestones.every((m) => m.status === "paid");
-    if (allPaid) {
-      project.status = "completed";
-    }
+      const curr = milestone.currency || project.currency || "USD";
+      project.activityLog.unshift(
+        newActivity({
+          action: `Released payment (${getCurrencySymbol(curr)}${milestone.amount.toLocaleString()} ${curr}) for Stage 0${milestone.stageNumber}: ${milestone.title} via Payment Capture ${capture.captureId}`,
+          actor: project.client.name,
+          actorRole: "client",
+          milestoneTitle: milestone.title,
+        })
+      );
+      return { milestone, alreadyRecorded: false };
+    });
 
-    const newTx: TransactionRecord = {
-      id: `tx_${Date.now()}`,
+    if (!outcome) return null;
+    const { project } = outcome;
+    const { milestone, alreadyRecorded } = outcome.result;
+
+    const currency = milestone.currency || project.currency || "USD";
+    const transaction: TransactionRecord = {
+      id: txId,
       projectId: project.id,
       projectTitle: project.title,
       milestoneId: milestone.id,
       milestoneTitle: milestone.title,
       amount: milestone.amount,
-      currency: milestone.currency || project.currency || "USD",
+      currency,
       status: "completed",
       payer: project.client.name,
       payee: project.freelancer.name,
       payerId: project.clientId,
       payeeId: project.freelancerId,
-      paidAt: new Date().toLocaleString("en-US", {
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      paidAt: milestone.paidAt || displayDateTime(),
       transactionId: capture.captureId,
       isSimulated: capture.isSimulated ?? false,
       isDemo: Boolean(project.isDemo),
     };
 
-    const curr = milestone.currency || project.currency || "USD";
-    const currSym = curr.toUpperCase() === "INR" ? "₹" : "$";
-    const activity: ActivityItem = {
-      id: `act_${Date.now()}`,
-      action: `Released payment (${currSym}${milestone.amount.toLocaleString()} ${curr}) for Stage 0${milestone.stageNumber}: ${milestone.title} via Payment Capture ${capture.captureId}`,
-      actor: project.client.name,
-      actorRole: "client",
-      timestamp: "Just now",
-      milestoneTitle: milestone.title,
-    };
-    project.activityLog.unshift(activity);
-
-    // Save updated project to Supabase
-    const row = projectToRow(project);
-    await supabase.from("projects").upsert(row, { onConflict: "id" });
-
-    // Save new transaction record to Supabase
+    // Deterministic id (tx_<captureId>) makes this upsert safe to repeat, which also
+    // repairs a missing ledger row when the same (already recorded) capture is replayed.
     const txPayerId = project.clientId && isValidUUID(project.clientId) ? project.clientId : null;
     const txPayeeId = project.freelancerId && isValidUUID(project.freelancerId) ? project.freelancerId : null;
-
-    const txRow = {
-      id: newTx.id,
-      project_id: project.id,
-      project_title: project.title,
-      milestone_id: milestone.id,
-      milestone_title: milestone.title,
-      payer_id: txPayerId,
-      payer: project.client.name,
-      payee_id: txPayeeId,
-      payee: project.freelancer.name,
-      amount: milestone.amount,
-      currency: newTx.currency,
-      status: "completed",
-      paypal_transaction_id: capture.captureId,
-      paid_at: new Date().toISOString(),
-      is_simulated: Boolean(capture.isSimulated),
-      is_demo: Boolean(project.isDemo),
-      data: newTx,
-    };
-    await supabase.from("transactions").upsert(txRow, { onConflict: "id" });
+    const { error: ledgerError } = await supabase.from("transactions").upsert(
+      {
+        id: transaction.id,
+        project_id: project.id,
+        project_title: project.title,
+        milestone_id: milestone.id,
+        milestone_title: milestone.title,
+        payer_id: txPayerId,
+        payer: project.client.name,
+        payee_id: txPayeeId,
+        payee: project.freelancer.name,
+        amount: milestone.amount,
+        currency,
+        status: "completed",
+        paypal_transaction_id: capture.captureId,
+        paid_at: new Date().toISOString(),
+        is_simulated: Boolean(capture.isSimulated),
+        is_demo: Boolean(project.isDemo),
+        data: transaction,
+      },
+      { onConflict: "id" }
+    );
+    if (ledgerError) {
+      // The milestone is already marked paid, so don't fail the payment; retrying the same capture re-creates the row.
+      console.error(`Failed to write ledger row for capture ${capture.captureId} (already recorded=${alreadyRecorded}):`, ledgerError);
+    }
 
     invalidateServerCache();
-    return { project, milestone, transaction: newTx };
+    return { project, milestone, transaction };
   },
 
   async addMilestone(
@@ -875,53 +903,48 @@ export const db = {
       amount: number;
       dueDate?: string;
       acceptanceCriteria?: string[];
-    }
-  ): Promise<{ project: ProjectContract; milestone: any } | null> {
-    const supabase = getServerSupabase();
-    if (!supabase) return null;
+    },
+    actor: { name: string; role: "client" | "freelancer" }
+  ): Promise<{ project: ProjectContract; milestone: Milestone } | null> {
+    const outcome = await mutateProject(projectId, (project) => {
+      if (CLOSED_PROJECT_STATUSES.includes(project.status)) {
+        throw new DomainError(409, `This project is ${project.status}; milestones can no longer be added.`, "PROJECT_CLOSED");
+      }
+      const newStageNumber = project.milestones.length + 1;
+      const idSeed = Date.now();
+      const newMilestone: Milestone = {
+        id: newId("ms"),
+        stageNumber: newStageNumber,
+        title: milestone.title,
+        description: milestone.description || "Milestone deliverables agreed with client.",
+        amount: milestone.amount,
+        currency: project.currency || "USD",
+        dueDate: milestone.dueDate || project.targetDeadline || "TBD",
+        status: "not_started",
+        acceptanceCriteria: (milestone.acceptanceCriteria || []).map((critTitle, idx) => ({
+          id: `crit_${idSeed}_${idx}`,
+          title: critTitle,
+          description: `Verified deliverable for ${critTitle}`,
+          status: "pending" as const,
+        })),
+        submissions: [],
+      };
 
-    const { data } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
-    if (!data) return null;
+      project.milestones.push(newMilestone);
+      project.totalBudget = (project.totalBudget || 0) + milestone.amount;
 
-    const project = rowToProject(data);
-    const newStageNumber = project.milestones.length + 1;
-    const newId = `ms_${Date.now()}`;
-    const newMilestone: any = {
-      id: newId,
-      stageNumber: newStageNumber,
-      title: milestone.title,
-      description: milestone.description || "Milestone deliverables agreed with client.",
-      amount: milestone.amount,
-      currency: project.currency || "USD",
-      dueDate: milestone.dueDate || project.targetDeadline || "TBD",
-      status: "not_started",
-      acceptanceCriteria: (milestone.acceptanceCriteria || []).map((critTitle, idx) => ({
-        id: `crit_${Date.now()}_${idx}`,
-        title: critTitle,
-        description: `Verified deliverable for ${critTitle}`,
-        status: "pending",
-      })),
-      submissions: [],
-    };
-
-    project.milestones.push(newMilestone);
-    project.totalBudget = (project.totalBudget || 0) + milestone.amount;
-
-    const activity: ActivityItem = {
-      id: `act_${Date.now()}`,
-      action: `${project.freelancer.name} added a new milestone: Stage 0${newStageNumber}: "${milestone.title}" ($${milestone.amount.toLocaleString()} USD).`,
-      actor: project.freelancer.name,
-      actorRole: "freelancer",
-      timestamp: "Just now",
-      milestoneTitle: milestone.title,
-    };
-    project.activityLog.unshift(activity);
-
-    const row = projectToRow(project);
-    await supabase.from("projects").upsert(row, { onConflict: "id" });
-
-    invalidateServerCache();
-    return { project, milestone: newMilestone };
+      const curr = project.currency || "USD";
+      project.activityLog.unshift(
+        newActivity({
+          action: `${actor.name} added a new milestone: Stage 0${newStageNumber}: "${milestone.title}" (${getCurrencySymbol(curr)}${milestone.amount.toLocaleString()} ${curr}).`,
+          actor: actor.name,
+          actorRole: actor.role,
+          milestoneTitle: milestone.title,
+        })
+      );
+      return newMilestone;
+    });
+    return outcome ? { project: outcome.project, milestone: outcome.result } : null;
   },
 
   async editMilestone(
@@ -933,151 +956,104 @@ export const db = {
       amount?: number;
       dueDate?: string;
     }
-  ): Promise<{ project: ProjectContract; milestone: any } | null> {
-    const supabase = getServerSupabase();
-    if (!supabase) return null;
+  ): Promise<{ project: ProjectContract; milestone: Milestone } | null> {
+    const outcome = await mutateProject(projectId, (project) => {
+      const milestone = findMilestone(project, milestoneId);
 
-    const { data } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
-    if (!data) return null;
+      if (milestone.status === "paid" || milestone.status === "approved") {
+        throw new DomainError(409, "Approved or paid milestones cannot be edited.", "BAD_STATE");
+      }
 
-    const project = rowToProject(data);
-    const milestone = project.milestones.find((m) => m.id === milestoneId);
-    if (!milestone) return null;
+      // Price is locked once the contract has been accepted.
+      if (!isProjectAccepted(project) && updates.amount !== undefined && updates.amount !== milestone.amount) {
+        project.totalBudget = (project.totalBudget || 0) + (updates.amount - milestone.amount);
+        milestone.amount = updates.amount;
+      }
 
-    if (milestone.status === "paid" || milestone.status === "approved") {
-      return null;
-    }
-
-    const isAccepted = isProjectAccepted(project);
-    if (!isAccepted && updates.amount !== undefined && updates.amount !== milestone.amount) {
-      const diff = updates.amount - milestone.amount;
-      project.totalBudget = (project.totalBudget || 0) + diff;
-      milestone.amount = updates.amount;
-    }
-
-    if (updates.title) milestone.title = updates.title;
-    if (updates.description) milestone.description = updates.description;
-    if (updates.dueDate) milestone.dueDate = updates.dueDate;
-
-    const row = projectToRow(project);
-    await supabase.from("projects").upsert(row, { onConflict: "id" });
-
-    invalidateServerCache();
-    return { project, milestone };
+      if (updates.title) milestone.title = updates.title;
+      if (updates.description) milestone.description = updates.description;
+      if (updates.dueDate) milestone.dueDate = updates.dueDate;
+      return milestone;
+    });
+    return outcome ? { project: outcome.project, milestone: outcome.result } : null;
   },
 
   async getTransactions(filter?: {
     userId?: string;
     userEmail?: string;
-    isDemo?: boolean;
     projectId?: string;
   }): Promise<TransactionRecord[]> {
-    const all = await getLiveTransactions();
-    const isDemo = Boolean(filter?.isDemo);
     const userId = filter?.userId?.trim();
     const userEmail = filter?.userEmail?.trim().toLowerCase();
     const projectId = filter?.projectId;
 
-    if (isDemo) {
-      let demos = all.filter((t) => t.isDemo);
-      if (projectId) demos = demos.filter((t) => t.projectId === projectId);
-      return demos;
-    }
+    if (!userId && !userEmail) return [];
 
-    if (userId || userEmail) {
-      const userProjects = await db.getProjects({ userId, userEmail });
-      const userProjectIds = new Set(userProjects.map((p) => p.id));
+    const all = await getLiveTransactions();
+    const userProjects = await db.getProjects({ userId, userEmail });
+    const userProjectIds = new Set(userProjects.map((p) => p.id));
 
-      let userTxs = all.filter(
-        (t) => userProjectIds.has(t.projectId) || (userId && (t.payerId === userId || t.payeeId === userId))
-      );
-      if (projectId) userTxs = userTxs.filter((t) => t.projectId === projectId);
-      return userTxs;
-    }
-
-    return [];
+    let userTxs = all.filter(
+      (t) => userProjectIds.has(t.projectId) || (userId && (t.payerId === userId || t.payeeId === userId))
+    );
+    if (projectId) userTxs = userTxs.filter((t) => t.projectId === projectId);
+    return userTxs;
   },
 
-  async getNotifications(filter?: { userId?: string; isDemo?: boolean }): Promise<NotificationItem[]> {
-    const supabase = getServerSupabase();
-    if (!supabase) return [];
-
-    if (filter?.isDemo) {
-      const { data } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("is_demo", true)
-        .order("created_at", { ascending: false });
-      return (data || []).map((n) => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        type: n.type || "general",
-        unread: Boolean(n.unread),
-        timestamp: n.created_at || "Just now",
-        projectId: n.project_id || undefined,
-        userId: n.user_id || undefined,
-        isDemo: true,
-      }));
-    }
-
-    if (filter?.userId) {
-      const { data } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("is_demo", false)
-        .eq("user_id", filter.userId)
-        .order("created_at", { ascending: false });
-      return (data || []).map((n) => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        type: n.type || "general",
-        unread: Boolean(n.unread),
-        timestamp: n.created_at || "Just now",
-        projectId: n.project_id || undefined,
-        userId: n.user_id || undefined,
-        isDemo: false,
-      }));
-    }
-
-    return [];
+  async getNotifications(filter: { userId?: string }): Promise<NotificationItem[]> {
+    if (!filter.userId) return [];
+    const supabase = requireSupabase();
+    const { data, error } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", filter.userId)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(`Failed to load notifications: ${error.message}`);
+    return (data || []).map((n) => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      type: n.type || "general",
+      unread: Boolean(n.unread),
+      timestamp: n.created_at || "Just now",
+      projectId: n.project_id || undefined,
+      userId: n.user_id || undefined,
+      isDemo: Boolean(n.is_demo),
+    }));
   },
 
   async createNotification(item: NotificationItem): Promise<NotificationItem> {
     const supabase = getServerSupabase();
     if (supabase) {
       const uId = item.userId && isValidUUID(item.userId) ? item.userId : null;
-      try {
-        await supabase.from("notifications").upsert(
-          {
-            id: item.id,
-            user_id: uId,
-            project_id: item.projectId || null,
-            title: item.title,
-            message: item.message,
-            type: item.type || "general",
-            unread: Boolean(item.unread ?? true),
-            is_demo: Boolean(item.isDemo),
-            created_at: new Date().toISOString(),
-          },
-          { onConflict: "id" }
-        );
-      } catch (_) {}
+      const { error } = await supabase.from("notifications").upsert(
+        {
+          id: item.id,
+          user_id: uId,
+          project_id: item.projectId || null,
+          title: item.title,
+          message: item.message,
+          type: item.type || "general",
+          unread: Boolean(item.unread ?? true),
+          is_demo: Boolean(item.isDemo),
+          created_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+      if (error) console.warn("Could not create notification:", error.message);
     }
     return item;
   },
 
-  async markNotificationRead(id: string): Promise<boolean> {
-    const supabase = getServerSupabase();
-    if (!supabase) return false;
-    const { error } = await supabase.from("notifications").update({ unread: false }).eq("id", id);
+  /** Marks one notification read — only if it belongs to `userId`. */
+  async markNotificationRead(id: string, userId: string): Promise<boolean> {
+    const supabase = requireSupabase();
+    const { error } = await supabase.from("notifications").update({ unread: false }).eq("id", id).eq("user_id", userId);
     return !error;
   },
 
   async markAllNotificationsRead(userId: string): Promise<boolean> {
-    const supabase = getServerSupabase();
-    if (!supabase) return false;
+    const supabase = requireSupabase();
     const { error } = await supabase.from("notifications").update({ unread: false }).eq("user_id", userId);
     return !error;
   },

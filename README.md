@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MilestoneOS
 
-## Getting Started
+Milestone-based freelance contracts with AI-assisted delivery review and secure payments.
 
-First, run the development server:
+A client and a freelancer agree on a project split into milestones, each with a price and acceptance
+criteria. The freelancer submits work, Gemini checks it against the criteria (advisory only), the client
+approves, and payment is released through the checkout. Every step is recorded in an activity log and ledger.
+
+## Tech stack
+
+- **Frontend:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4
+- **Backend:** Next.js route handlers (`src/app/api`)
+- **Database and auth:** Supabase (PostgreSQL + Auth)
+- **AI:** Google Gemini API (audits and invoices)
+- **Payments:** hosted checkout (sandbox by default), orders are created and captured server-side
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # then fill in your keys
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Database setup: run the files in `supabase/` in order — `schema.sql`, then `migrations/002` … `005`
+(005 aligns the schema with what the app writes and is safe to run repeatedly).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How access control works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Every protected API route verifies the caller's **Supabase access token** on the server
+  (`src/server/auth.ts`). The browser sends it automatically through `authFetch` (`src/lib/api-client.ts`).
+- Who you are is never read from a request body, query string or custom header.
+- A user can only see and change projects where they are the client or the freelancer, and each action
+  is limited to the right side (for example only the client can approve work or pay; only the freelancer
+  can submit work).
+- Milestones follow a strict order: `not started → in progress → submitted → approved → paid`. The server
+  rejects out-of-order actions, so a paid milestone can never be re-opened or paid twice.
+- Payment amounts always come from the stored contract, and the server inspects an order before capturing it.
 
-## Learn More
+## Project layout
 
-To learn more about Next.js, take a look at the following resources:
+| Path | What lives there |
+| --- | --- |
+| `src/app` | Pages (landing, auth, dashboard, invitations) and API routes |
+| `src/server` | Server-only code: auth, database layer, payments, Gemini, identity lookup |
+| `src/lib` | Shared types and data, the dashboard state store, the authenticated fetch helper |
+| `src/components` | Landing page and dashboard UI |
+| `supabase` | SQL schema and migrations |
+| `scripts` | Older ad-hoc API scripts. They were written before token authentication and send identity in the request, so they need updating before they can be used again. |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Uploaded files are limited to 5 MB each and 8 MB per submission.
+- Checkout currencies: USD, EUR, GBP, CAD, AUD. Contracts in other currencies must be changed before payment.
+- This is a hackathon prototype running against a payment **sandbox**.
