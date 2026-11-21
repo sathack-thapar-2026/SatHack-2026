@@ -284,7 +284,7 @@ export default function HillsLandscapeBackground() {
       <div
         className="absolute inset-0 size-full pointer-events-none transition-opacity duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)]"
         style={{
-          opacity: webstripsVisible ? (isDark ? 0.90 : 0.75) : 0,
+          opacity: webstripsVisible ? (isDark ? 0.78 : 0.62) : 0,
         }}
       >
         <WebThreads
@@ -293,13 +293,13 @@ export default function HillsLandscapeBackground() {
           backgroundColor="transparent"
           lightMode={false} // Luminous additive blooming in both themes for true ethereal glow
           threadCount={6}
-          speed={0.10}
+          speed={0.075} // Reduced speed by 25% (from 0.10 to 0.075) for graceful majestic flow
           frequency={3.8}
           spread={0.28}
           position={0.48}
-          glow={isDark ? 0.026 : 0.022}
-          brightness={isDark ? 0.90 : 0.85}
-          thickness={1.1}
+          glow={isDark ? 0.0195 : 0.0165} // Reduced glow by 25% (from 0.026/0.022) to prevent text interference
+          brightness={isDark ? 0.78 : 0.70} // Restrained brightness for pristine text readability
+          thickness={0.95}
           fade={0.02}
           shimmer={true}
           mouseInteraction={true}

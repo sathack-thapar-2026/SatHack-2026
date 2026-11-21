@@ -56,8 +56,8 @@ export default function CinematicHeroText() {
         <span
           className={`inline-block transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             w.isItalic
-              ? "font-serif italic font-normal tracking-wide bg-gradient-to-r from-[#0284C7] via-[#06B6D4] to-[#0D9488] dark:from-[#58C7E8] dark:via-[#8EE3F5] dark:to-[#B6F5EE] bg-clip-text text-transparent drop-shadow-[0_2px_14px_rgba(6,182,212,0.25)] dark:drop-shadow-[0_0_24px_rgba(88,199,232,0.35)]"
-              : "text-[#172B43] dark:text-[#F4F7FA] font-black tracking-tight"
+              ? "font-serif italic font-normal tracking-wide bg-gradient-to-r from-[#0369A1] via-[#0284C7] to-[#0F766E] dark:from-[#58C7E8] dark:via-[#8EE3F5] dark:to-[#B6F5EE] bg-clip-text text-transparent drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_0_24px_rgba(88,199,232,0.45)]"
+              : "text-[#0F1D2E] dark:text-[#F8FAFC] font-black tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)] dark:drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]"
           }`}
           style={{
             transform: isReady
@@ -78,7 +78,7 @@ export default function CinematicHeroText() {
     <div className="mx-auto max-w-5xl text-center select-none">
       {/* Eyebrow Pill */}
       <div
-        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/85 dark:bg-[#172B24]/70 border border-[#0284C7]/25 dark:border-[#58C7E8]/20 backdrop-blur-md shadow-md shadow-cyan-900/5 dark:shadow-black/30 mb-6 transition-all duration-700"
+        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 dark:bg-[#131F33]/90 border border-[#0284C7]/30 dark:border-[#58C7E8]/30 backdrop-blur-md shadow-md shadow-cyan-900/5 dark:shadow-black/40 mb-6 transition-all duration-700"
         style={{
           transform: hasEntered || isReduced ? "translate3d(0, 0, 0)" : "translate3d(0, 16px, 0)",
           opacity: hasEntered || isReduced ? 1 : 0,
@@ -109,9 +109,9 @@ export default function CinematicHeroText() {
         </div>
       </h1>
 
-      {/* Supporting Subtitle Paragraph — Clear, crisp readability in the ethereal sky */}
+      {/* Supporting Subtitle Paragraph — Solid high-contrast text with background protection */}
       <div
-        className="mt-6 text-base sm:text-lg text-[#172B43]/85 dark:text-[#C0CDD8] font-medium max-w-2xl mx-auto leading-relaxed transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        className="mt-6 text-base sm:text-lg text-[#172B43] dark:text-[#E2E8F0] font-semibold sm:font-medium max-w-2xl mx-auto leading-relaxed drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)] dark:drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
         style={{
           transform: hasEntered || isReduced ? "translate3d(0, 0, 0)" : "translate3d(0, 20px, 0)",
           opacity: hasEntered || isReduced ? 1 : 0,
@@ -144,7 +144,7 @@ export default function CinematicHeroText() {
         </Link>
         <Link
           href="#how-it-works"
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-[#172B43]/15 dark:border-white/10 bg-white/90 dark:bg-[#172338]/80 hover:bg-white dark:hover:bg-[#1E2D44] hover:border-[#172B43]/25 dark:hover:border-white/20 px-7 py-3.5 text-sm font-semibold text-[#172B43] dark:text-[#F4F7FA] shadow-md shadow-slate-900/5 dark:shadow-black/30 backdrop-blur-md transition-all cursor-pointer"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-[#172B43]/20 dark:border-white/15 bg-white/95 dark:bg-[#131F33]/90 hover:bg-white dark:hover:bg-[#1E2D44] hover:border-[#172B43]/30 dark:hover:border-white/30 px-7 py-3.5 text-sm font-semibold text-[#172B43] dark:text-[#F4F7FA] shadow-md shadow-slate-900/5 dark:shadow-black/40 backdrop-blur-md transition-all cursor-pointer"
         >
           <span>See How It Works</span>
         </Link>

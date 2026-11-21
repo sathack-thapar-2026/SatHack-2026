@@ -304,7 +304,7 @@ export default function MilestoneWheel({
                 0{milestones[active]?.index}
               </span>
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#526B82] dark:text-[#AAB7B5]">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#1E3A56] dark:text-[#CBD5E1]">
                   Active Milestone ({active + 1} of {count})
                 </span>
                 <div className="text-sm font-bold text-[#172B43] dark:text-[#F4F7FA] leading-tight">
@@ -324,7 +324,7 @@ export default function MilestoneWheel({
                     "px-2.5 py-1 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer",
                     active === idx
                       ? "bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] text-white shadow-sm shadow-cyan-500/25 scale-[1.03]"
-                      : "text-[#526B82] hover:text-[#172B43] dark:text-[#AAB7B5] dark:hover:text-[#F2F4F0]"
+                      : "text-[#334D68] hover:text-[#172B43] dark:text-[#CBD5E1] dark:hover:text-[#F2F4F0]"
                   )}
                 >
                   0{m.index}
@@ -457,7 +457,7 @@ export default function MilestoneWheel({
                         <h4 className="mt-1.5 text-sm sm:text-base font-bold text-[#172B43] dark:text-[#F4F7FA] line-clamp-1">
                           {m.title}
                         </h4>
-                        <p className="mt-1.5 text-xs text-[#526B82] dark:text-[#C0CDD8] leading-relaxed line-clamp-2">
+                        <p className="mt-1.5 text-xs text-[#334D68] dark:text-[#CBD5E1] leading-relaxed line-clamp-2">
                           {m.desc}
                         </p>
                       </div>
@@ -484,7 +484,7 @@ export default function MilestoneWheel({
           {/* Bottom Progress Bar & Scroll Cue */}
           <div className="relative z-30 mx-auto w-full max-w-xl px-4 flex flex-col items-center gap-2">
             {/* 4-Step Milestone Progress Bar */}
-            <div className="w-full flex items-center gap-1.5 bg-white/80 dark:bg-[#131F33]/90 border border-[#172B43]/10 dark:border-white/10 p-1 rounded-full backdrop-blur-sm">
+            <div className="w-full flex items-center gap-1.5 bg-white/90 dark:bg-[#131F33]/90 border border-[#172B43]/10 dark:border-white/10 p-1 rounded-full backdrop-blur-sm">
               {milestones.map((_, i) => (
                 <div
                   key={i}
@@ -498,7 +498,7 @@ export default function MilestoneWheel({
               ))}
             </div>
 
-            <span className="text-[11px] font-medium text-[#788DA0] dark:text-[#AAB7B5]">
+            <span className="text-[11px] font-semibold text-[#334D68] dark:text-[#CBD5E1]">
               Scroll down to advance milestones • Use arrows or click stages
             </span>
           </div>
@@ -518,7 +518,7 @@ export default function MilestoneWheel({
                 "flex-1 py-1.5 text-center rounded-lg transition-colors cursor-pointer",
                 active === idx
                   ? "bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] text-white shadow-sm shadow-cyan-500/25"
-                  : "text-[#526B82] hover:text-[#172B43] dark:text-[#AAB7B5] dark:hover:text-[#F2F4F0]"
+                  : "text-[#334D68] hover:text-[#172B43] dark:text-[#CBD5E1] dark:hover:text-[#F2F4F0]"
               )}
             >
               Stage 0{m.index}
@@ -549,7 +549,7 @@ export default function MilestoneWheel({
               <h4 className="mt-2 text-base font-bold text-[#172B43] dark:text-[#F4F7FA]">
                 {m.title}
               </h4>
-              <p className="mt-1.5 text-xs text-[#526B82] dark:text-[#C0CDD8] leading-relaxed">
+              <p className="mt-1.5 text-xs text-[#334D68] dark:text-[#CBD5E1] leading-relaxed">
                 {m.desc}
               </p>
 

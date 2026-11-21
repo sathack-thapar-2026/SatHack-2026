@@ -19,7 +19,7 @@ export default function WhoItsFor() {
         <div className="mt-14 grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Client Card */}
           <ScrollReveal direction="left" delay={150} className="h-full">
-            <div className="h-full rounded-3xl border border-[#172B43]/10 dark:border-white/10 bg-white/80 dark:bg-[#131F33]/85 p-8 shadow-xl dark:shadow-2xl shadow-black/15 dark:shadow-black/50 backdrop-blur-xl flex flex-col justify-between transition-colors duration-300">
+            <div className="h-full rounded-3xl border border-[#172B43]/10 dark:border-white/10 bg-white/95 dark:bg-[#131F33]/95 p-8 shadow-xl dark:shadow-2xl shadow-black/10 dark:shadow-black/50 backdrop-blur-xl flex flex-col justify-between transition-colors duration-300">
               <div>
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#0E7490]/15 dark:bg-[#0E7490]/30 text-[#078FBE] dark:text-[#58C7E8] border border-[#078FBE]/20 dark:border-[#58C7E8]/30 font-bold shadow-md">
@@ -35,7 +35,7 @@ export default function WhoItsFor() {
                   </div>
                 </div>
 
-                <ul className="mt-6 space-y-4 text-sm text-[#526B82] dark:text-[#AAB7B5]">
+                <ul className="mt-6 space-y-4 text-sm text-[#1E3A56] dark:text-[#E2E8F0]">
                   <li className="flex items-start gap-3">
                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-[#172B24] text-[#078FBE] dark:text-[#58C7E8] border border-[#078FBE]/20 dark:border-[#58C7E8]/20 shrink-0 mt-0.5">
                       <Check className="h-3.5 w-3.5" />
@@ -65,7 +65,7 @@ export default function WhoItsFor() {
 
           {/* Freelancer Card */}
           <ScrollReveal direction="right" delay={250} className="h-full">
-            <div className="h-full rounded-3xl border border-[#172B43]/10 dark:border-white/10 bg-white/80 dark:bg-[#131F33]/85 p-8 shadow-xl dark:shadow-2xl shadow-black/15 dark:shadow-black/50 backdrop-blur-xl flex flex-col justify-between transition-colors duration-300">
+            <div className="h-full rounded-3xl border border-[#172B43]/10 dark:border-white/10 bg-white/95 dark:bg-[#131F33]/95 p-8 shadow-xl dark:shadow-2xl shadow-black/10 dark:shadow-black/50 backdrop-blur-xl flex flex-col justify-between transition-colors duration-300">
               <div>
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 dark:bg-[#0D281E]/40 text-emerald-600 dark:text-[#4ADE80] border border-emerald-500/20 dark:border-[#4ADE80]/30 font-bold shadow-md">
@@ -81,7 +81,7 @@ export default function WhoItsFor() {
                   </div>
                 </div>
 
-                <ul className="mt-6 space-y-4 text-sm text-[#526B82] dark:text-[#AAB7B5]">
+                <ul className="mt-6 space-y-4 text-sm text-[#1E3A56] dark:text-[#E2E8F0]">
                   <li className="flex items-start gap-3">
                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 dark:bg-[#0D281E] text-emerald-600 dark:text-[#4ADE80] border border-emerald-500/20 dark:border-[#4ADE80]/20 shrink-0 mt-0.5">
                       <Check className="h-3.5 w-3.5" />

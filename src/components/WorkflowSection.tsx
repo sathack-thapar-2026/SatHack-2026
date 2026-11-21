@@ -82,7 +82,7 @@ export default function WorkflowSection() {
             <h2 className="text-3xl sm:text-5xl font-extrabold text-[#172B43] dark:text-[#F4F7FA] tracking-tight">
               Simple Steps to Fair Payments
             </h2>
-            <p className="mt-3 text-base text-[#526B82] dark:text-[#AAB7B5] max-w-2xl mx-auto leading-relaxed">
+            <p className="mt-3 text-base text-[#1E3A56] dark:text-[#E2E8F0] max-w-2xl mx-auto leading-relaxed font-medium">
               No stress, no misunderstandings, and no lost money. Watch how work moves from agreed specifications to verified milestone settlements.
             </p>
           </div>

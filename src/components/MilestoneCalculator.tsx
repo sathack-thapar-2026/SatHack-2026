@@ -48,7 +48,7 @@ export default function MilestoneCalculator() {
             <h2 className="text-3xl sm:text-4xl font-extrabold text-[#172B43] dark:text-[#F4F7FA] tracking-tight">
               See How Your Money Is Protected
             </h2>
-            <p className="mt-3 text-sm sm:text-base text-[#526B82] dark:text-[#AAB7B5]">
+            <p className="mt-3 text-sm sm:text-base text-[#1E3A56] dark:text-[#E2E8F0] font-medium">
               Never pay 100% upfront to someone you just met. Pay step-by-step as real work gets completed and verified.
             </p>
           </div>
@@ -56,18 +56,18 @@ export default function MilestoneCalculator() {
 
         {/* Budget Slider Card */}
         <ScrollReveal direction="up" delay={150}>
-          <div className="mt-10 mx-auto max-w-xl rounded-3xl border border-[#172B43]/10 dark:border-white/10 bg-white/85 dark:bg-[#131F33]/85 p-7 shadow-xl dark:shadow-2xl shadow-black/15 dark:shadow-black/50 backdrop-blur-xl transition-colors duration-300">
+          <div className="mt-10 mx-auto max-w-xl rounded-3xl border border-[#172B43]/10 dark:border-white/10 bg-white/95 dark:bg-[#131F33]/95 p-7 shadow-xl dark:shadow-2xl shadow-black/10 dark:shadow-black/50 backdrop-blur-xl transition-colors duration-300">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#526B82] dark:text-[#AAB7B5]">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#1E3A56] dark:text-[#E2E8F0]">
                 Total Project Budget
               </span>
-              <div className="flex rounded-xl border border-[#172B43]/10 dark:border-white/10 bg-slate-100 dark:bg-[#0E1624] p-0.5 text-xs font-bold">
+              <div className="flex rounded-xl border border-[#172B43]/15 dark:border-white/10 bg-slate-100 dark:bg-[#0E1624] p-0.5 text-xs font-bold">
                 <button
                   onClick={() => setCurrency("INR")}
                   className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
                     currency === "INR"
                       ? "bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] text-white shadow-sm"
-                      : "text-[#526B82] hover:text-[#172B43] dark:text-[#AAB7B5] dark:hover:text-[#F2F4F0]"
+                      : "text-[#334D68] hover:text-[#172B43] dark:text-[#CBD5E1] dark:hover:text-[#F2F4F0]"
                   }`}
                 >
                   ₹ INR
@@ -77,7 +77,7 @@ export default function MilestoneCalculator() {
                   className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
                     currency === "USD"
                       ? "bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] text-white shadow-sm"
-                      : "text-[#526B82] hover:text-[#172B43] dark:text-[#AAB7B5] dark:hover:text-[#F2F4F0]"
+                      : "text-[#334D68] hover:text-[#172B43] dark:text-[#CBD5E1] dark:hover:text-[#F2F4F0]"
                   }`}
                 >
                   $ USD
@@ -89,7 +89,7 @@ export default function MilestoneCalculator() {
               <span className="text-4xl font-black text-[#172B43] dark:text-[#F4F7FA] tabular-nums tracking-tight">
                 {symbol}{currentBudget.toLocaleString()}
               </span>
-              <span className="text-xs font-semibold text-[#526B82] dark:text-[#AAB7B5]">
+              <span className="text-xs font-semibold text-[#1E3A56] dark:text-[#CBD5E1]">
                 split into 4 verified stages
               </span>
             </div>
@@ -104,7 +104,7 @@ export default function MilestoneCalculator() {
               className="w-full mt-6 h-2 bg-slate-200 dark:bg-[#1B2B3E] rounded-lg appearance-none cursor-pointer accent-[#078FBE] dark:accent-[#58C7E8]"
             />
 
-            <div className="mt-2.5 flex justify-between text-[11px] font-semibold text-[#788DA0] dark:text-[#AAB7B5]/80">
+            <div className="mt-2.5 flex justify-between text-[11px] font-semibold text-[#334D68] dark:text-[#CBD5E1]">
               <span>{symbol}{Math.round(20000 * rateMultiplier).toLocaleString()} (Smaller Website)</span>
               <span>{symbol}{Math.round(150000 * rateMultiplier).toLocaleString()} (Full Online Platform)</span>
             </div>

@@ -35,11 +35,11 @@ export default function HomePage() {
         {/* FRIENDLY CLOSING CTA — Translucent Glass Surface */}
         <section className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8 backdrop-blur-[2px]">
           <ScrollReveal direction="up" delay={100}>
-            <div className="mx-auto max-w-3xl text-center rounded-3xl border border-[#172B43]/10 dark:border-white/10 bg-white/80 dark:bg-[#131F33]/85 p-8 sm:p-12 shadow-xl dark:shadow-2xl shadow-black/20 dark:shadow-black/50 backdrop-blur-xl">
+            <div className="mx-auto max-w-3xl text-center rounded-3xl border border-[#172B43]/10 dark:border-white/10 bg-white/95 dark:bg-[#131F33]/95 p-8 sm:p-12 shadow-xl dark:shadow-2xl shadow-black/10 dark:shadow-black/50 backdrop-blur-xl">
               <h2 className="text-3xl sm:text-4xl font-extrabold text-[#172B43] dark:text-[#F4F7FA] tracking-tight">
                 Ready to Protect Your Next Project?
               </h2>
-              <p className="mt-3 text-base text-[#526B82] dark:text-[#AAB7B5] max-w-xl mx-auto leading-relaxed">
+              <p className="mt-3 text-base text-[#1E3A56] dark:text-[#E2E8F0] max-w-xl mx-auto leading-relaxed font-medium">
                 Join clients and freelancers who build and get paid with total confidence.
               </p>
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
