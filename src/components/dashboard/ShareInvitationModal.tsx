@@ -56,12 +56,12 @@ export default function ShareInvitationModal({
   };
 
   const whatsappText = encodeURIComponent(
-    `Hi! I've created our project proposal for "${project.title}" ($${project.totalBudget.toLocaleString()} USD) on PayZorr. Please review the agreed milestone deliverables and accept the contract here: ${inviteUrl}`
+    `Hi! I've created our project proposal for "${project.title}" ($${project.totalBudget.toLocaleString()} USD) on Permile. Please review the agreed milestone deliverables and accept the contract here: ${inviteUrl}`
   );
   const whatsappUrl = `https://api.whatsapp.com/send?text=${whatsappText}`;
 
-  const rawSubject = `Project Proposal: ${project.title} on PayZorr`;
-  const rawBody = `Hello,\n\nI have prepared the project proposal for "${project.title}" ($${project.totalBudget.toLocaleString()} USD across ${project.milestones.length} milestones) on PayZorr.\n\nPlease inspect the agreed deliverables and acceptance criteria to activate the contract:\n${inviteUrl}\n\nBest regards,\n${project.initiatedBy === "client" ? project.client.name : project.freelancer.name}`;
+  const rawSubject = `Project Proposal: ${project.title} on Permile`;
+  const rawBody = `Hello,\n\nI have prepared the project proposal for "${project.title}" ($${project.totalBudget.toLocaleString()} USD across ${project.milestones.length} milestones) on Permile.\n\nPlease inspect the agreed deliverables and acceptance criteria to activate the contract:\n${inviteUrl}\n\nBest regards,\n${project.initiatedBy === "client" ? project.client.name : project.freelancer.name}`;
 
   const emailSubject = encodeURIComponent(rawSubject);
   const emailBody = encodeURIComponent(rawBody);
@@ -287,7 +287,7 @@ export default function ShareInvitationModal({
               <span>Safe Mutual Agreement Process</span>
             </div>
             <p>
-              Opening this link does not automatically accept the project. The recipient must authenticate on PayZorr, inspect the agreed milestone criteria, and explicitly click <strong>Accept Proposal</strong> to activate work and escrow.
+              Opening this link does not automatically accept the project. The recipient must authenticate on Permile, inspect the agreed milestone criteria, and explicitly click <strong>Accept Proposal</strong> to activate work and escrow.
             </p>
           </div>
         </div>

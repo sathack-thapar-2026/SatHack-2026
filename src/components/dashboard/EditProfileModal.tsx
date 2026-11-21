@@ -104,7 +104,7 @@ export default function EditProfileModal({ isOpen, onClose }: EditProfileModalPr
           <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/[0.02] flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                PayZorr Base Account ID:
+                Permile Base Account ID:
               </span>
               <span className="font-mono font-bold text-xs px-2.5 py-1 rounded bg-slate-200/80 dark:bg-white/10 text-slate-800 dark:text-slate-200">
                 {baseCode}

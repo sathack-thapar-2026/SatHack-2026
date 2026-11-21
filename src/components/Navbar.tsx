@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Menu, X, ArrowUpRight } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
-import PayZorrLogo from "@/components/PayZorrLogo";
+import PermileLogo from "@/components/PermileLogo";
 
 const NAV_LINKS = [
   { label: "How It Works", href: "/#how-it-works", id: "how-it-works" },
@@ -66,7 +66,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 w-full bg-[#EAF4FA]/85 dark:bg-[#101827]/85 backdrop-blur-xl border-b border-[#172B43]/10 dark:border-white/[0.08] transition-colors duration-500">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
         {/* Brand Logo */}
-        <PayZorrLogo variant="compact" size="md" href="/" />
+        <PermileLogo variant="compact" size="md" href="/" />
 
         {/* Clean Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8 text-sm">

@@ -1,5 +1,5 @@
 /**
- * PayZorr — PayPal Server Client
+ * Permile — PayPal Server Client
  * Official Orders v2 REST API integration for server-side order creation and capture.
  */
 
@@ -108,7 +108,7 @@ export async function createPayPalOrder(params: CreateOrderParams): Promise<PayP
     .replace(/[^\x20-\x7E]/g, "")
     .trim()
     .slice(0, 90);
-  const cleanDescription = `PayZorr: ${cleanTitle}`
+  const cleanDescription = `Permile: ${cleanTitle}`
     .replace(/[^\x20-\x7E]/g, "")
     .trim()
     .slice(0, 127);
@@ -131,7 +131,7 @@ export async function createPayPalOrder(params: CreateOrderParams): Promise<PayP
       },
     ],
     application_context: {
-      brand_name: "PayZorr",
+      brand_name: "Permile",
       landing_page: "NO_PREFERENCE",
       shipping_preference: "NO_SHIPPING",
       user_action: "PAY_NOW",
