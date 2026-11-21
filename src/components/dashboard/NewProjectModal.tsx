@@ -648,7 +648,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
             </div>
 
             {/* Scrollable Form Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+            <div className="p-5 sm:p-6 pb-28 sm:pb-36 overflow-y-auto space-y-6 flex-1 text-xs">
               {/* Form Error Banner */}
               {formError && (
                 <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between gap-2 shadow-2xs">
@@ -943,25 +943,13 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Proposed Project Budget ({currencySymbol} {currency}) *
-                      </label>
-                      <select
-                        value={currency}
-                        onChange={(e) => setCurrency(e.target.value)}
-                        aria-label="Project currency"
-                        className="rounded-lg border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-700 focus:border-[#0070BA] focus:outline-none dark:border-white/10 dark:bg-[#131C31] dark:text-slate-200 cursor-pointer"
-                      >
-                        {PROJECT_CURRENCIES.map((code) => (
-                          <option key={code} value={code}>
-                            {getCurrencySymbol(code).trim()} {code}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">{currencySymbol}</span>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Proposed Project Budget *
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold select-none text-xs">
+                        {currencySymbol}
+                      </span>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -972,8 +960,22 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                           if (formError) setFormError(null);
                         }}
                         placeholder={currency === "INR" ? "e.g. 50000" : "e.g. 3500"}
-                        className="w-full pl-7 pr-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-mono font-bold text-slate-900 focus:border-[#0070BA] focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
+                        className="w-full pl-7 pr-24 py-2 rounded-xl border border-slate-300 bg-white text-xs font-mono font-bold text-slate-900 focus:border-[#0070BA] focus:outline-none dark:border-white/10 dark:bg-white/5 dark:text-white"
                       />
+                      <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                        <select
+                          value={currency}
+                          onChange={(e) => setCurrency(e.target.value)}
+                          aria-label="Project currency"
+                          className="rounded-lg border border-slate-200 bg-slate-100/90 dark:border-white/10 dark:bg-[#131C31] px-2 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 focus:border-[#0070BA] focus:outline-none cursor-pointer"
+                        >
+                          {PROJECT_CURRENCIES.map((code) => (
+                            <option key={code} value={code}>
+                              {code}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     {!SUPPORTED_CHECKOUT_CURRENCIES.includes(currency) && (
                       <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1">

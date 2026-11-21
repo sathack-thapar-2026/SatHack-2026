@@ -86,7 +86,7 @@ export default function MilestoneCalculator() {
             </div>
 
             <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-4xl font-black text-[#172B43] dark:text-[#F4F7FA] tabular-nums tracking-tight">
+              <span suppressHydrationWarning className="text-4xl font-black text-[#172B43] dark:text-[#F4F7FA] tabular-nums tracking-tight">
                 {symbol}{currentBudget.toLocaleString()}
               </span>
               <span className="text-xs font-semibold text-[#1E3A56] dark:text-[#CBD5E1]">
@@ -105,8 +105,8 @@ export default function MilestoneCalculator() {
             />
 
             <div className="mt-2.5 flex justify-between text-[11px] font-semibold text-[#334D68] dark:text-[#CBD5E1]">
-              <span>{symbol}{Math.round(20000 * rateMultiplier).toLocaleString()} (Smaller Website)</span>
-              <span>{symbol}{Math.round(150000 * rateMultiplier).toLocaleString()} (Full Online Platform)</span>
+              <span suppressHydrationWarning>{symbol}{Math.round(20000 * rateMultiplier).toLocaleString()} (Smaller Website)</span>
+              <span suppressHydrationWarning>{symbol}{Math.round(150000 * rateMultiplier).toLocaleString()} (Full Online Platform)</span>
             </div>
           </div>
         </ScrollReveal>

@@ -69,7 +69,7 @@ export default function Navbar() {
         <PermileLogo variant="compact" size="md" href="/" />
 
         {/* Clean Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8 text-sm">
+        <nav className="hidden md:flex items-center gap-5 lg:gap-8 text-sm">
           {NAV_LINKS.map((item) => {
             const isActive = activeSection === item.id;
             return (
@@ -89,7 +89,7 @@ export default function Navbar() {
         </nav>
 
         {/* Actions & Theme Switch */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
 
           <Link
@@ -100,7 +100,7 @@ export default function Navbar() {
           </Link>
           <Link
             href="/auth?mode=signup"
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] px-4 py-2 text-sm font-bold text-white shadow-md shadow-cyan-950/40 hover:shadow-cyan-500/25 border border-cyan-400/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="hidden sm:inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] px-4 py-2 text-sm font-bold text-white shadow-md shadow-cyan-950/40 hover:shadow-cyan-500/25 border border-cyan-400/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <span>Get Started</span>
             <ArrowUpRight className="h-4 w-4" />
@@ -109,8 +109,9 @@ export default function Navbar() {
           {/* Mobile hamburger */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden flex items-center justify-center rounded-xl p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="md:hidden flex items-center justify-center rounded-xl p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors"
             aria-label="Toggle menu"
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>

@@ -19,9 +19,9 @@ export interface MilestoneWheelProps {
 }
 
 /* WorksWheel Geometry Tuning */
-const CARD_H = 0.38; // card height as fraction of stage height
-const CARD_MAX_W = 0.40; // max card width as fraction of stage width
-const CARD_RATIO = 1.45; // width / height ratio
+const CARD_H = 0.42; // card height as fraction of stage height
+const CARD_MAX_W = 0.42; // max card width as fraction of stage width
+const CARD_RATIO = 1.35; // width / height ratio
 const STEP = 46; // degrees between cards on the vertical drum (ample breathing room)
 const DRUM = 2.25; // drum radius in card heights
 const LENS = 2.8; // perspective distance in card heights
@@ -76,7 +76,6 @@ export default function MilestoneWheel({
   const wheelRef = React.useRef<HTMLDivElement>(null);
   const cardRefs = React.useRef<(HTMLElement | null)[]>([]);
   const faceRefs = React.useRef<(HTMLElement | null)[]>([]);
-  const labelRef = React.useRef<HTMLDivElement>(null);
 
   const turn = React.useRef(0);
   const target = React.useRef(0);
@@ -239,11 +238,6 @@ export default function MilestoneWheel({
         }
       }
 
-      // Ring center label fades out as drum unfolds
-      if (labelRef.current) {
-        labelRef.current.style.opacity = String(Math.max(0, 1 - m * 1.6));
-      }
-
       const currentActive = clamp(Math.round(pos), 0, last);
       setActive((prev) => (prev === currentActive ? prev : currentActive));
     };
@@ -368,23 +362,6 @@ export default function MilestoneWheel({
             className="relative flex-1 w-full min-h-[440px] cursor-grab active:cursor-grabbing outline-none overflow-hidden"
             style={{ perspective: `${metrics.depth}px` }}
           >
-            {/* Center Hub Label visible only in initial Ring State */}
-            <div
-              ref={labelRef}
-              className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center text-center transition-opacity duration-300"
-            >
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 dark:bg-[#172B24]/90 border border-[#078FBE]/25 dark:border-[#58C7E8]/30 text-[#078FBE] dark:text-[#58C7E8] text-xs font-bold uppercase tracking-wider mb-2 shadow-md dark:shadow-lg dark:shadow-black/40">
-                <Layers className="h-3.5 w-3.5" />
-                <span>4 Protected Milestones</span>
-              </div>
-              <div className="text-xl sm:text-2xl font-black text-[#172B43] dark:text-[#F4F7FA] tracking-tight">
-                Scroll to Explore Stages
-              </div>
-              <p className="text-xs text-[#526B82] dark:text-[#AAB7B5] mt-1 max-w-[200px] leading-relaxed">
-                Release payments step-by-step as real work is verified
-              </p>
-            </div>
-
             {/* 3D Wheel Drum Container */}
             <div
               ref={wheelRef}
@@ -416,7 +393,7 @@ export default function MilestoneWheel({
                         faceRefs.current[idx] = node;
                       }}
                       className={cn(
-                        "relative block size-full rounded-2xl border p-5 sm:p-6 transition-all duration-300 flex flex-col justify-between shadow-xl",
+                        "relative block size-full rounded-2xl border p-4 sm:p-5 transition-all duration-300 flex flex-col justify-between shadow-xl overflow-hidden",
                         isActiveCard
                           ? "bg-white dark:bg-[#101827] border-[#078FBE] dark:border-[#58C7E8] ring-2 ring-[#078FBE]/20 dark:ring-[#58C7E8]/30 shadow-xl dark:shadow-2xl shadow-cyan-900/10 dark:shadow-cyan-950/60"
                           : "bg-white/95 dark:bg-[#131F33] border-slate-200/90 dark:border-white/10 shadow-md dark:shadow-black/40 hover:border-slate-300 dark:hover:border-white/20"
@@ -448,28 +425,28 @@ export default function MilestoneWheel({
                         </div>
 
                         {/* Amount */}
-                        <div className="mt-3.5 text-2xl sm:text-3xl font-black text-[#172B43] dark:text-[#F4F7FA] tabular-nums tracking-tight">
+                        <div className="mt-2.5 text-2xl sm:text-3xl font-black text-[#172B43] dark:text-[#F4F7FA] tabular-nums tracking-tight">
                           {symbol}
                           {amount.toLocaleString()}
                         </div>
 
                         {/* Title & Description */}
-                        <h4 className="mt-1.5 text-sm sm:text-base font-bold text-[#172B43] dark:text-[#F4F7FA] line-clamp-1">
+                        <h4 className="mt-1 text-sm sm:text-base font-bold text-[#172B43] dark:text-[#F4F7FA] line-clamp-1">
                           {m.title}
                         </h4>
-                        <p className="mt-1.5 text-xs text-[#334D68] dark:text-[#CBD5E1] leading-relaxed line-clamp-2">
+                        <p className="mt-1 text-xs text-[#334D68] dark:text-[#CBD5E1] leading-relaxed line-clamp-2">
                           {m.desc}
                         </p>
                       </div>
 
                       {/* Bottom Footer: Verification Assurance */}
-                      <div className="mt-4 pt-3 border-t border-[#172B43]/10 dark:border-white/10 flex items-center justify-between text-[11px] font-semibold text-[#078FBE] dark:text-[#58C7E8]">
-                        <div className="flex items-center gap-1.5">
+                      <div className="mt-2.5 pt-2 border-t border-[#172B43]/10 dark:border-white/10 flex items-center justify-between text-[11px] font-semibold text-[#078FBE] dark:text-[#58C7E8] shrink-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
                           <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                          <span>Paid safely after review</span>
+                          <span className="truncate">Paid safely after review</span>
                         </div>
                         {isActiveCard && (
-                          <span className="flex items-center gap-1 text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-[#EAF4FA] dark:bg-[#172B24] text-[#078FBE] dark:text-[#58C7E8] border border-[#078FBE]/30 dark:border-[#58C7E8]/30">
+                          <span className="flex items-center gap-1 text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-[#EAF4FA] dark:bg-[#172B24] text-[#078FBE] dark:text-[#58C7E8] border border-[#078FBE]/30 dark:border-[#58C7E8]/30 shrink-0 ml-2">
                             <Sparkles className="h-2.5 w-2.5" /> Front
                           </span>
                         )}

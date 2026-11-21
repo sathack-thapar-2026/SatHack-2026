@@ -11,7 +11,7 @@ import { ArrowRight } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div className="relative min-h-screen bg-transparent text-[var(--text-primary)] flex flex-col transition-colors duration-500 selection:bg-cyan-500/25 selection:text-cyan-600 dark:selection:text-cyan-300">
+    <div className="relative min-h-screen w-full overflow-x-clip bg-transparent text-[var(--text-primary)] flex flex-col transition-colors duration-500 selection:bg-cyan-500/25 selection:text-cyan-600 dark:selection:text-cyan-300">
       {/* Interactive WebThreads background (kept from main) */}
       <WebThreadsController />
 
@@ -22,7 +22,7 @@ export default function HomePage() {
 
       <Navbar />
 
-      <main className="relative z-10 flex-1">
+      <main className="relative z-10 flex-1 w-full overflow-x-clip">
         {/* HERO SECTION — Cinematic Word-by-Word Reveal */}
         <section className="relative pt-16 pb-20 sm:pt-24 sm:pb-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
           <CinematicHeroText />
@@ -50,10 +50,10 @@ export default function HomePage() {
               <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
                   href="/auth?mode=signup"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-cyan-900/20 hover:shadow-cyan-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer border border-cyan-400/20"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] px-8 py-3.5 text-sm font-bold !text-white text-white shadow-lg shadow-cyan-900/20 hover:shadow-cyan-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer border border-cyan-400/20"
                 >
-                  <span>Create Free Account</span>
-                  <ArrowRight className="h-4 w-4" />
+                  <span className="text-white !text-white font-bold">Create Free Account</span>
+                  <ArrowRight className="h-4 w-4 text-white !text-white shrink-0" />
                 </Link>
                 <Link
                   href="/auth?mode=login"

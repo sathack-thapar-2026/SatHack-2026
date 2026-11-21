@@ -58,9 +58,7 @@ export default function PermileLogo({
             )}
             style={{ fontFamily: "var(--font-sans), 'Plus Jakarta Sans', sans-serif" }}
           >
-            <span className="text-[#172B43] dark:text-[#F4F7FA] transition-colors">Per</span>
-            <span className="text-[#0284C7] dark:text-[#38BDF8] transition-colors">M</span>
-            <span className="text-[#172B43] dark:text-[#F4F7FA] transition-colors">ile</span>
+            <span className="text-[#172B43] dark:text-[#F4F7FA] transition-colors">Per</span><span className="text-[#0284C7] dark:text-[#38BDF8] transition-colors">M</span><span className="text-[#172B43] dark:text-[#F4F7FA] transition-colors">ile</span>
           </span>
           {(showTagline || variant === "full") && (
             <span className="text-[10px] font-semibold text-[#526B82] dark:text-[#CBD5E1] tracking-wider uppercase mt-0.5">
