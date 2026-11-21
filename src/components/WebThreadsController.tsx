@@ -33,8 +33,8 @@ export default function WebThreadsController() {
         frequency={4.0}
         spread={0.26}
         position={0.48}
-        glow={isDark ? 0.014 : 0.018}
-        brightness={isDark ? 0.55 : 0.64}
+        glow={isDark ? 0.014 : 0.012}
+        brightness={isDark ? 0.55 : 0.5}
         thickness={1.05}
         fade={0.015}
         mouseInteraction={true}
