@@ -297,24 +297,24 @@ export default function MilestoneWheel({
         <div className="sticky top-20 h-[calc(100vh-5.5rem)] min-h-[580px] max-h-[760px] flex flex-col justify-between py-2 select-none overflow-hidden">
           
           {/* Top Stage Control Header */}
-          <div className="relative z-30 mx-auto w-full max-w-4xl px-4 flex flex-col sm:flex-row items-center justify-between gap-3 backdrop-blur-md bg-white/85 dark:bg-[#131B2E]/90 p-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm">
+          <div className="relative z-30 mx-auto w-full max-w-4xl px-4 flex flex-col sm:flex-row items-center justify-between gap-3 backdrop-blur-xl bg-white/85 dark:bg-[#131F33]/85 p-3 rounded-2xl border border-[#172B43]/10 dark:border-white/10 shadow-xl dark:shadow-2xl transition-colors duration-300">
             {/* Active Stage Indicator */}
             <div className="flex items-center gap-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-[#0070BA] font-mono text-xs font-bold dark:bg-[#0070BA]/20 dark:text-sky-300">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EAF4FA] dark:bg-[#172B24] text-[#078FBE] dark:text-[#58C7E8] font-mono text-xs font-bold border border-[#078FBE]/30 dark:border-[#58C7E8]/30">
                 0{milestones[active]?.index}
               </span>
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#1E3A56] dark:text-[#CBD5E1]">
                   Active Milestone ({active + 1} of {count})
                 </span>
-                <div className="text-sm font-bold text-slate-800 dark:text-white leading-tight">
+                <div className="text-sm font-bold text-[#172B43] dark:text-[#F4F7FA] leading-tight">
                   {milestones[active]?.title}
                 </div>
               </div>
             </div>
 
             {/* Quick Stage Navigation Pills */}
-            <div className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/70 dark:border-slate-700/70">
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#0E1624] p-1 rounded-xl border border-[#172B43]/10 dark:border-white/10">
               {milestones.map((m, idx) => (
                 <button
                   key={m.index}
@@ -323,8 +323,8 @@ export default function MilestoneWheel({
                   className={cn(
                     "px-2.5 py-1 text-xs font-bold rounded-lg transition-all duration-200 cursor-pointer",
                     active === idx
-                      ? "bg-gradient-to-r from-[#004C8F] to-[#0070BA] text-white shadow-sm shadow-blue-500/25 scale-[1.03]"
-                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                      ? "bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] text-white shadow-sm shadow-cyan-500/25 scale-[1.03]"
+                      : "text-[#334D68] hover:text-[#172B43] dark:text-[#CBD5E1] dark:hover:text-[#F2F4F0]"
                   )}
                 >
                   0{m.index}
@@ -339,7 +339,7 @@ export default function MilestoneWheel({
                 onClick={() => scrollToStage(Math.max(active - 1, 0))}
                 disabled={active === 0}
                 aria-label="Previous milestone"
-                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-lg border border-[#172B43]/10 dark:border-white/10 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] text-[#172B43] dark:text-[#F2F4F0] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 <ChevronUp className="h-4 w-4" />
               </button>
@@ -348,7 +348,7 @@ export default function MilestoneWheel({
                 onClick={() => scrollToStage(Math.min(active + 1, last))}
                 disabled={active === last}
                 aria-label="Next milestone"
-                className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-lg border border-[#172B43]/10 dark:border-white/10 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] text-[#172B43] dark:text-[#F2F4F0] disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
               >
                 <ChevronDown className="h-4 w-4" />
               </button>
@@ -373,14 +373,14 @@ export default function MilestoneWheel({
               ref={labelRef}
               className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center text-center transition-opacity duration-300"
             >
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[#0070BA] dark:text-sky-300 text-xs font-bold uppercase tracking-wider mb-2">
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/90 dark:bg-[#172B24]/90 border border-[#078FBE]/25 dark:border-[#58C7E8]/30 text-[#078FBE] dark:text-[#58C7E8] text-xs font-bold uppercase tracking-wider mb-2 shadow-md dark:shadow-lg dark:shadow-black/40">
                 <Layers className="h-3.5 w-3.5" />
                 <span>4 Protected Milestones</span>
               </div>
-              <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              <div className="text-xl sm:text-2xl font-black text-[#172B43] dark:text-[#F4F7FA] tracking-tight">
                 Scroll to Explore Stages
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-[200px] leading-relaxed">
+              <p className="text-xs text-[#526B82] dark:text-[#AAB7B5] mt-1 max-w-[200px] leading-relaxed">
                 Release payments step-by-step as real work is verified
               </p>
             </div>
@@ -410,18 +410,16 @@ export default function MilestoneWheel({
                       marginTop: -(metrics.cardH || 230) / 2,
                     }}
                   >
-                    {/* Inner Card Face — SOLID OPAQUE BACKGROUND to ensure zero bleed-through */}
+                    {/* Inner Card Face — SOLID OPAQUE SURFACE (Light vs Dark) */}
                     <div
                       ref={(node) => {
                         faceRefs.current[idx] = node;
                       }}
                       className={cn(
                         "relative block size-full rounded-2xl border p-5 sm:p-6 transition-all duration-300 flex flex-col justify-between shadow-xl",
-                        // Solid background with zero translucency so background cards cannot be seen through
-                        "bg-white dark:bg-[#131B2E]",
                         isActiveCard
-                          ? "border-[#0070BA] dark:border-sky-400 ring-2 ring-sky-400/30 shadow-2xl shadow-blue-500/20 dark:shadow-sky-500/25"
-                          : "border-slate-200 dark:border-slate-800 shadow-slate-200/50 dark:shadow-black/40 hover:border-[#0070BA]/50"
+                          ? "bg-white dark:bg-[#101827] border-[#078FBE] dark:border-[#58C7E8] ring-2 ring-[#078FBE]/20 dark:ring-[#58C7E8]/30 shadow-xl dark:shadow-2xl shadow-cyan-900/10 dark:shadow-cyan-950/60"
+                          : "bg-white/95 dark:bg-[#131F33] border-slate-200/90 dark:border-white/10 shadow-md dark:shadow-black/40 hover:border-slate-300 dark:hover:border-white/20"
                       )}
                     >
                       {/* Top Row: Milestone Number & Percentage */}
@@ -431,8 +429,8 @@ export default function MilestoneWheel({
                             className={cn(
                               "flex h-7 w-7 items-center justify-center rounded-xl font-mono text-xs font-bold transition-colors",
                               isActiveCard
-                                ? "bg-gradient-to-r from-[#004C8F] to-[#0070BA] text-white shadow-sm"
-                                : "bg-blue-50 text-[#0070BA] dark:bg-[#0070BA]/20 dark:text-sky-300"
+                                ? "bg-gradient-to-r from-[#0E7490] to-[#087FBE] text-white shadow-sm"
+                                : "bg-slate-100 dark:bg-white/10 text-[#172B43] dark:text-[#F4F7FA]"
                             )}
                           >
                             0{m.index}
@@ -441,8 +439,8 @@ export default function MilestoneWheel({
                             className={cn(
                               "px-2.5 py-0.5 rounded-full text-xs font-bold border",
                               isActiveCard
-                                ? "bg-sky-500/10 text-[#0070BA] dark:text-sky-300 border-sky-400/30"
-                                : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-transparent"
+                                ? "bg-[#EAF4FA] dark:bg-[#172B24] text-[#078FBE] dark:text-[#58C7E8] border-[#078FBE]/30 dark:border-[#58C7E8]/30"
+                                : "bg-slate-100 dark:bg-white/5 text-[#526B82] dark:text-[#AAB7B5] border-transparent"
                             )}
                           >
                             {m.percent}% of budget
@@ -450,28 +448,28 @@ export default function MilestoneWheel({
                         </div>
 
                         {/* Amount */}
-                        <div className="mt-3.5 text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">
+                        <div className="mt-3.5 text-2xl sm:text-3xl font-black text-[#172B43] dark:text-[#F4F7FA] tabular-nums tracking-tight">
                           {symbol}
                           {amount.toLocaleString()}
                         </div>
 
                         {/* Title & Description */}
-                        <h4 className="mt-1.5 text-sm sm:text-base font-bold text-slate-800 dark:text-slate-100 line-clamp-1">
+                        <h4 className="mt-1.5 text-sm sm:text-base font-bold text-[#172B43] dark:text-[#F4F7FA] line-clamp-1">
                           {m.title}
                         </h4>
-                        <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
+                        <p className="mt-1.5 text-xs text-[#334D68] dark:text-[#CBD5E1] leading-relaxed line-clamp-2">
                           {m.desc}
                         </p>
                       </div>
 
                       {/* Bottom Footer: Verification Assurance */}
-                      <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-semibold text-[#0070BA] dark:text-sky-400">
+                      <div className="mt-4 pt-3 border-t border-[#172B43]/10 dark:border-white/10 flex items-center justify-between text-[11px] font-semibold text-[#078FBE] dark:text-[#58C7E8]">
                         <div className="flex items-center gap-1.5">
                           <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
                           <span>Paid safely after review</span>
                         </div>
                         {isActiveCard && (
-                          <span className="flex items-center gap-1 text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-sky-950/60 dark:text-sky-300">
+                          <span className="flex items-center gap-1 text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-[#EAF4FA] dark:bg-[#172B24] text-[#078FBE] dark:text-[#58C7E8] border border-[#078FBE]/30 dark:border-[#58C7E8]/30">
                             <Sparkles className="h-2.5 w-2.5" /> Front
                           </span>
                         )}
@@ -486,21 +484,21 @@ export default function MilestoneWheel({
           {/* Bottom Progress Bar & Scroll Cue */}
           <div className="relative z-30 mx-auto w-full max-w-xl px-4 flex flex-col items-center gap-2">
             {/* 4-Step Milestone Progress Bar */}
-            <div className="w-full flex items-center gap-1.5 bg-slate-200/70 dark:bg-slate-800/70 p-1 rounded-full backdrop-blur-sm">
+            <div className="w-full flex items-center gap-1.5 bg-white/90 dark:bg-[#131F33]/90 border border-[#172B43]/10 dark:border-white/10 p-1 rounded-full backdrop-blur-sm">
               {milestones.map((_, i) => (
                 <div
                   key={i}
                   className={cn(
                     "h-1.5 flex-1 rounded-full transition-all duration-300",
                     i <= active
-                      ? "bg-gradient-to-r from-[#004C8F] to-[#0070BA] dark:from-sky-500 dark:to-cyan-400 shadow-sm"
-                      : "bg-slate-300/60 dark:bg-slate-700/60"
+                      ? "bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#078FBE] dark:to-[#58C7E8] shadow-sm"
+                      : "bg-slate-200 dark:bg-white/10"
                   )}
                 />
               ))}
             </div>
 
-            <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
+            <span className="text-[11px] font-semibold text-[#334D68] dark:text-[#CBD5E1]">
               Scroll down to advance milestones • Use arrows or click stages
             </span>
           </div>
@@ -510,7 +508,7 @@ export default function MilestoneWheel({
       {/* MOBILE: Simplified Swipeable Carousel (screens below sm) */}
       <div className="sm:hidden mt-8 px-2">
         {/* Mobile Navigation Tabs */}
-        <div className="flex rounded-xl border border-slate-200/90 bg-white p-1 text-xs font-bold dark:border-slate-800 dark:bg-[#131B2E] shadow-sm mb-4">
+        <div className="flex rounded-xl border border-[#172B43]/10 dark:border-white/10 bg-white/85 dark:bg-[#131F33]/90 p-1 text-xs font-bold shadow-lg mb-4">
           {milestones.map((m, idx) => (
             <button
               key={m.index}
@@ -519,8 +517,8 @@ export default function MilestoneWheel({
               className={cn(
                 "flex-1 py-1.5 text-center rounded-lg transition-colors cursor-pointer",
                 active === idx
-                  ? "bg-gradient-to-r from-[#004C8F] to-[#0070BA] text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                  ? "bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] text-white shadow-sm shadow-cyan-500/25"
+                  : "text-[#334D68] hover:text-[#172B43] dark:text-[#CBD5E1] dark:hover:text-[#F2F4F0]"
               )}
             >
               Stage 0{m.index}
@@ -533,39 +531,39 @@ export default function MilestoneWheel({
           const m = milestones[active];
           const amount = Math.round((currentBudget * m.percent) / 100);
           return (
-            <div className="rounded-2xl border border-slate-200/90 bg-white p-6 shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:bg-[#131B2E] dark:shadow-none">
+            <div className="rounded-2xl border border-[#172B43]/10 dark:border-white/10 bg-white dark:bg-[#101827] p-6 shadow-xl dark:shadow-2xl dark:shadow-black/60 transition-colors">
               <div className="flex items-center justify-between text-xs font-bold">
-                <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-blue-50 text-[#0070BA] font-mono dark:bg-[#0070BA]/20 dark:text-sky-300">
+                <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#EAF4FA] dark:bg-[#172B24] text-[#078FBE] dark:text-[#58C7E8] font-mono border border-[#078FBE]/30 dark:border-[#58C7E8]/30">
                   0{m.index}
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-50 text-[#0070BA] border border-sky-100 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800/40">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#EAF4FA] dark:bg-[#172B24] text-[#078FBE] dark:text-[#58C7E8] border border-[#078FBE]/30 dark:border-[#58C7E8]/30">
                   {m.percent}% of budget
                 </span>
               </div>
 
-              <div className="mt-4 text-3xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">
+              <div className="mt-4 text-3xl font-black text-[#172B43] dark:text-[#F4F7FA] tabular-nums tracking-tight">
                 {symbol}
                 {amount.toLocaleString()}
               </div>
 
-              <h4 className="mt-2 text-base font-bold text-slate-800 dark:text-slate-100">
+              <h4 className="mt-2 text-base font-bold text-[#172B43] dark:text-[#F4F7FA]">
                 {m.title}
               </h4>
-              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="mt-1.5 text-xs text-[#334D68] dark:text-[#CBD5E1] leading-relaxed">
                 {m.desc}
               </p>
 
-              <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-[#0070BA] dark:text-sky-400">
+              <div className="mt-5 pt-3 border-t border-[#172B43]/10 dark:border-white/10 flex items-center justify-between text-xs font-semibold text-[#078FBE] dark:text-[#58C7E8]">
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck className="h-4 w-4 shrink-0" />
                   <span>Paid safely after review</span>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-1.5">
                   <button
                     type="button"
                     onClick={() => setActive((prev) => Math.max(prev - 1, 0))}
                     disabled={active === 0}
-                    className="p-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-30"
+                    className="p-1.5 px-2 rounded-lg border border-[#172B43]/10 dark:border-white/10 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] text-[#172B43] dark:text-[#F2F4F0] disabled:opacity-30 cursor-pointer"
                   >
                     ←
                   </button>
@@ -573,7 +571,7 @@ export default function MilestoneWheel({
                     type="button"
                     onClick={() => setActive((prev) => Math.min(prev + 1, last))}
                     disabled={active === last}
-                    className="p-1 rounded border border-slate-200 dark:border-slate-700 disabled:opacity-30"
+                    className="p-1.5 px-2 rounded-lg border border-[#172B43]/10 dark:border-white/10 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] text-[#172B43] dark:text-[#F2F4F0] disabled:opacity-30 cursor-pointer"
                   >
                     →
                   </button>

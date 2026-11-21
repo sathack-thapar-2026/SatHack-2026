@@ -63,7 +63,7 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/85 dark:bg-[#070B14]/85 backdrop-blur-md border-b border-slate-200/80 dark:border-white/10 transition-colors">
+    <header className="sticky top-0 z-50 w-full bg-[#EAF4FA]/85 dark:bg-[#101827]/85 backdrop-blur-xl border-b border-[#172B43]/10 dark:border-white/[0.08] transition-colors duration-500">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
         {/* Brand Logo */}
         <PayZorrLogo variant="compact" size="md" href="/" />
@@ -78,8 +78,8 @@ export default function Navbar() {
                 href={item.href}
                 className={`transition-colors duration-200 ${
                   isActive
-                    ? "font-bold text-[#0070BA] dark:text-sky-400"
-                    : "text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white font-medium"
+                    ? "font-bold text-[#078FBE] dark:text-[#58C7E8] drop-shadow-sm dark:drop-shadow-[0_0_12px_rgba(88,199,232,0.35)]"
+                    : "text-[#526B82] hover:text-[#172B43] dark:text-[#AAB7B5] dark:hover:text-[#F2F4F0] font-medium"
                 }`}
               >
                 <span>{item.label}</span>
@@ -94,13 +94,13 @@ export default function Navbar() {
 
           <Link
             href="/auth?mode=login"
-            className="hidden sm:inline-flex text-sm font-semibold text-slate-700 hover:text-slate-950 px-3 py-2 rounded-xl hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+            className="hidden sm:inline-flex text-sm font-semibold text-[#526B82] hover:text-[#172B43] dark:text-[#AAB7B5] dark:hover:text-[#F2F4F0] px-3.5 py-2 rounded-xl hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors"
           >
             Sign In
           </Link>
           <Link
             href="/auth?mode=signup"
-            className="btn-gradient-glow inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#004C8F] via-[#0070BA] via-[#00A3E0] to-[#004C8F] px-4 py-2 text-sm font-bold text-white shadow-md shadow-blue-600/25 hover:shadow-blue-600/35 hover:scale-[1.02] active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] px-4 py-2 text-sm font-bold text-white shadow-md shadow-cyan-950/40 hover:shadow-cyan-500/25 border border-cyan-400/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
           >
             <span>Get Started</span>
             <ArrowUpRight className="h-4 w-4" />
@@ -119,7 +119,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-slate-200 bg-white/95 px-4 pt-3 pb-6 backdrop-blur-xl dark:border-slate-800 dark:bg-[#0B0F19]/95">
+        <div className="md:hidden border-b border-[#172B43]/10 dark:border-white/10 bg-[#EAF4FA]/95 dark:bg-[#101827]/95 px-4 pt-3 pb-6 backdrop-blur-2xl transition-colors duration-300">
           <nav className="flex flex-col gap-2 text-base font-semibold">
             {NAV_LINKS.map((item) => {
               const isActive = activeSection === item.id;
@@ -128,10 +128,10 @@ export default function Navbar() {
                   key={item.id}
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`py-2 px-3 transition-all duration-200 ${
+                  className={`py-2 px-3 transition-all duration-200 rounded-lg ${
                     isActive
-                      ? "font-black bg-gradient-to-r from-slate-950 via-[#004B87] to-[#0070BA] bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(56,189,248,0.75)] dark:bg-gradient-to-r dark:from-white dark:via-sky-100 dark:to-sky-300 dark:drop-shadow-[0_0_10px_rgba(255,255,255,1)] dark:drop-shadow-[0_0_20px_rgba(56,189,248,0.95)]"
-                      : "text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 font-semibold"
+                      ? "text-[#078FBE] dark:text-[#58C7E8] font-bold bg-[#078FBE]/10 dark:bg-white/[0.06] drop-shadow-sm dark:drop-shadow-[0_0_10px_rgba(88,199,232,0.4)]"
+                      : "text-[#526B82] hover:text-[#172B43] dark:text-[#AAB7B5] dark:hover:text-[#F2F4F0] font-medium"
                   }`}
                 >
                   {item.label}
@@ -139,18 +139,18 @@ export default function Navbar() {
               );
             })}
           </nav>
-          <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+          <div className="mt-4 pt-3 border-t border-[#172B43]/10 dark:border-white/10 flex flex-col gap-2">
             <Link
               href="/auth?mode=login"
               onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold text-slate-800 dark:text-slate-200"
+              className="w-full text-center py-2.5 rounded-xl border border-[#172B43]/10 dark:border-white/10 text-sm font-semibold text-[#172B43] dark:text-[#F2F4F0] bg-white/60 dark:bg-white/[0.04] hover:bg-white/90 dark:hover:bg-white/[0.08]"
             >
               Sign In
             </Link>
             <Link
               href="/auth?mode=signup"
               onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center py-2.5 rounded-xl bg-emerald-500 text-sm font-bold text-white shadow-md shadow-emerald-500/20"
+              className="w-full text-center py-2.5 rounded-xl bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] text-sm font-bold text-white shadow-md shadow-cyan-950/40 border border-cyan-400/20"
             >
               Create Account
             </Link>

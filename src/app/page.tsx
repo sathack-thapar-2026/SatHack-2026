@@ -5,95 +5,59 @@ import MilestoneCalculator from "@/components/MilestoneCalculator";
 import WhoItsFor from "@/components/WhoItsFor";
 import Footer from "@/components/Footer";
 import WebThreadsController from "@/components/WebThreadsController";
+import CinematicHeroText from "@/components/CinematicHeroText";
 import ScrollReveal from "@/components/ScrollReveal";
-import HeroTextFlyIn from "@/components/HeroTextFlyIn";
 import { ArrowRight } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div className="relative min-h-screen bg-[#F8FAFD] dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
-      {/* Interactive WebThreads background with live visualizer control panel */}
+    <div className="relative min-h-screen bg-transparent text-[var(--text-primary)] flex flex-col transition-colors duration-500 selection:bg-cyan-500/25 selection:text-cyan-600 dark:selection:text-cyan-300">
+      {/* Interactive WebThreads background (kept from main) */}
       <WebThreadsController />
 
-      {/* AMBIENT FLANK LIGHTING: Softly frames the left and right margins with rich brand blue ambiance */}
-      <div className="fixed inset-y-0 left-0 w-72 sm:w-96 bg-gradient-to-r from-blue-200/25 via-sky-100/15 to-transparent pointer-events-none z-0 dark:from-blue-900/15 dark:via-sky-950/5 dark:to-transparent" />
+      {/* AMBIENT FLANK LIGHTING: Softly frames the left and right margins with brand blue ambiance */}
+      <div className="fixed inset-y-0 left-0 w-72 sm:w-96 bg-gradient-to-r from-blue-200/25 via-sky-100/15 to-transparent pointer-events-none z-0 dark:from-blue-900/15 dark:via-blue-950/5 dark:to-transparent" />
       <div className="fixed inset-y-0 right-0 w-72 sm:w-96 bg-gradient-to-l from-sky-200/25 via-blue-100/10 to-transparent pointer-events-none z-0 dark:from-sky-900/15 dark:via-blue-950/5 dark:to-transparent" />
       <div className="fixed top-0 inset-x-0 h-40 bg-gradient-to-b from-sky-100/30 via-blue-50/10 to-transparent pointer-events-none z-0 dark:from-sky-950/20 dark:to-transparent" />
 
       <Navbar />
 
       <main className="relative z-10 flex-1">
-        {/* HERO SECTION */}
-        <section className="relative pt-12 pb-16 sm:pt-20 sm:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden">
-          {/* Broad, gentle ambient radiance with brand blue aura covering widescreen displays */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] max-w-full h-[550px] bg-gradient-to-tr from-blue-300/35 via-sky-200/35 to-indigo-100/25 dark:from-blue-600/20 dark:via-sky-500/20 dark:to-indigo-500/10 blur-[100px] pointer-events-none -z-10" />
-
-          <div className="mx-auto max-w-5xl text-center">
-            {/* DYNAMIC SCROLL FLY-IN HERO INTRO TEXT */}
-            <div>
-              <HeroTextFlyIn />
-            </div>
-
-            {/* Plain English Subtitle that anyone can understand */}
-            <ScrollReveal direction="up" delay={420} distance={28}>
-              <p className="mt-5 text-base sm:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed backdrop-blur-[2px]">
-                PayZorr lets you pay freelancers in safe stages. Before any money moves, AI checks that the work matches what was promised—so clients never get burned, and freelancers always get paid on time.
-              </p>
-            </ScrollReveal>
-
-            {/* Action Buttons */}
-            <ScrollReveal direction="up" delay={520} distance={24}>
-              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3.5">
-                <Link
-                  href="/auth?mode=signup"
-                  className="btn-gradient-glow w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#004C8F] via-[#0070BA] via-[#00A3E0] to-[#004C8F] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:shadow-blue-600/40 hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <span>Start for Free</span>
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  href="#how-it-works"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300/90 bg-white/90 hover:bg-white hover:border-[#0070BA]/60 px-6 py-3.5 text-sm font-semibold text-slate-800 shadow-sm hover:shadow hover:text-[#0070BA] dark:border-slate-700 dark:bg-slate-800/90 dark:text-white dark:hover:bg-slate-800 dark:hover:border-sky-400/60 dark:hover:text-sky-300 transition-all backdrop-blur-md"
-                >
-                  <span>See How It Works</span>
-                </Link>
-              </div>
-            </ScrollReveal>
-
-
-          </div>
+        {/* HERO SECTION — Cinematic Word-by-Word Reveal */}
+        <section className="relative pt-16 pb-20 sm:pt-24 sm:pb-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
+          <CinematicHeroText />
         </section>
 
         {/* 1. THREE SIMPLE STEPS (HOW IT WORKS) */}
         <WorkflowSection />
 
-        {/* 2. INTERACTIVE MILESTONE CALCULATOR */}
+        {/* 2. INTERACTIVE MILESTONE CALCULATOR (3D WORKSWHEEL) */}
         <MilestoneCalculator />
 
-        {/* 4. FOR CLIENTS & FREELANCERS */}
+        {/* 3. FOR CLIENTS & FREELANCERS */}
         <WhoItsFor />
 
-        {/* FRIENDLY CLOSING CTA */}
-        <section className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-blue-50/40 via-sky-50/20 to-transparent dark:bg-white/[0.03] backdrop-blur-[2px] transition-colors">
+        {/* FRIENDLY CLOSING CTA — Translucent Glass Surface */}
+        <section className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8 backdrop-blur-[2px]">
           <ScrollReveal direction="up" delay={100}>
-            <div className="mx-auto max-w-3xl text-center rounded-3xl border border-sky-200/80 bg-white/85 p-8 sm:p-12 shadow-xl shadow-blue-600/5 dark:border-slate-800 dark:bg-[#131B2E]/90 backdrop-blur-md">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <div className="mx-auto max-w-3xl text-center rounded-3xl border border-[#172B43]/10 dark:border-white/10 bg-white/95 dark:bg-[#131F33]/95 p-8 sm:p-12 shadow-xl dark:shadow-2xl shadow-black/10 dark:shadow-black/50 backdrop-blur-xl">
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#172B43] dark:text-[#F4F7FA] tracking-tight">
                 Ready to Protect Your Next Project?
               </h2>
-              <p className="mt-3 text-base text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
+              <p className="mt-3 text-base text-[#1E3A56] dark:text-[#E2E8F0] max-w-xl mx-auto leading-relaxed font-medium">
                 Join clients and freelancers who build and get paid with total confidence.
               </p>
-              <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
                   href="/auth?mode=signup"
-                  className="btn-gradient-glow w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#004C8F] via-[#0070BA] via-[#00A3E0] to-[#004C8F] px-7 py-3.5 text-sm font-bold text-white shadow-md shadow-blue-600/25 hover:shadow-blue-600/35 hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-cyan-900/20 hover:shadow-cyan-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer border border-cyan-400/20"
                 >
                   <span>Create Free Account</span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/auth?mode=login"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 hover:border-[#0070BA]/60 px-6 py-3.5 text-sm font-semibold text-slate-800 shadow-sm hover:text-[#0070BA] dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:hover:border-sky-400/60 dark:hover:text-sky-300 transition-all"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-[#172B43]/12 dark:border-white/10 bg-white/80 dark:bg-[#172338]/80 hover:bg-white dark:hover:bg-[#1E2D44] hover:border-[#172B43]/20 dark:hover:border-white/20 px-7 py-3.5 text-sm font-semibold text-[#172B43] dark:text-[#F4F7FA] shadow-md dark:shadow-lg dark:shadow-black/30 backdrop-blur-md transition-all cursor-pointer"
                 >
                   <span>Sign In to Workspace</span>
                 </Link>

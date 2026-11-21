@@ -1,26 +1,155 @@
 @import "tailwindcss";
 
+@theme {
+  --font-serif: var(--font-serif), Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
 @variant dark (&:where(.dark, .dark *));
 
 @layer base {
   :root {
-    --bg-main: #f8fafd;
-    --text-main: #0f172a;
-    --card-bg: #ffffff;
-    --border-color: #e2e8f0;
+    /* ========================================================
+       LIGHT MODE — ETHEREAL DAYLIGHT LANDSCAPE & DESIGN TOKENS
+       ======================================================== */
+    --background: #F0F7FD;
+    --bg-main: #F0F7FD;
+    --bg-secondary: #E4F2FA;
+    --surface: #FFFFFF;
+    --surface-glass: rgba(255, 255, 255, 0.82);
+    --surface-glass-border: rgba(23, 43, 67, 0.08);
+    --surface-hover: rgba(255, 255, 255, 0.95);
+
+    /* Typography — Light Mode */
+    --text-primary: #172B43;
+    --text-secondary: #24415C;
+    --text-body: #1E3A56;
+    --text-muted: #5E7A94;
+    --text-labels: #4B6780;
+    --text-cyan: #0284C7;
+
+    /* Accents & Borders */
+    --accent-primary: #0284C7;
+    --accent-secondary: #06B6D4;
+    --border-subtle: rgba(23, 43, 67, 0.10);
+    --border-card: rgba(23, 43, 67, 0.08);
+    --shadow-soft: 0 12px 36px -10px rgba(7, 143, 190, 0.10);
+
+    /* Landscape Light Mode — Ethereal Morning Atmosphere */
+    --landscape-sky-top: #F0F7FD;
+    --landscape-sky-mid: #E2F0FA;
+    --landscape-sky-bottom: #D2E9F6;
+    --landscape-horizon: #58B6D8;
+    --landscape-mist: rgba(255, 255, 255, 0.55);
+
+    /* Hills Light Mode: Ethereal Pastel Sage & Alpine Mint */
+    --hill-1-top: #BEDAD4;
+    --hill-1-mid: #ACCCC4;
+    --hill-1-bot: #9ABCB4;
+    --hill-2-top: #94BAAF;
+    --hill-2-mid: #80A89C;
+    --hill-2-bot: #6E968A;
+    --hill-3-top: #68988A;
+    --hill-3-mid: #558276;
+    --hill-3-bot: #447064;
+    --hill-4-top: #447266;
+    --hill-4-mid: #345E52;
+    --hill-4-bot: #264C42;
+
+    /* Webstrips Light Mode */
+    --webstrip-primary: #0284C7;
+    --webstrip-secondary: #06B6D4;
+    --webstrip-opacity: 0.72;
+    --webstrip-glow: 0.020;
+    --webstrip-brightness: 0.85;
+    --webstrip-opacity: 0.60;
+    --webstrip-glow: 0.012;
+    --webstrip-brightness: 0.70;
+
+    /* Buttons */
+    --btn-primary-bg: linear-gradient(135deg, #078FBE, #0E7490);
+    --btn-primary-text: #FFFFFF;
+    --btn-secondary-bg: rgba(255, 255, 255, 0.85);
+    --btn-secondary-text: #172B43;
+    --btn-secondary-border: rgba(23, 43, 67, 0.12);
+
+    /* Legacy mapping for dashboard compatibility */
+    --card-bg: #FFFFFF;
+    --border-color: #E2E8F0;
+    --text-main: #172B43;
   }
 
   .dark {
-    --bg-main: #0b0f19;
-    --text-main: #f8fafc;
-    --card-bg: #131b2e;
-    --border-color: #1e293b;
+    /* ========================================================
+       DARK MODE — MIDNIGHT LANDSCAPE & DESIGN TOKENS
+       ======================================================== */
+    --background: #101827;
+    --bg-main: #101827;
+    --bg-secondary: #0B101D;
+    --surface: #131F33;
+    --surface-glass: rgba(19, 31, 51, 0.78);
+    --surface-glass-border: rgba(255, 255, 255, 0.08);
+    --surface-hover: rgba(25, 41, 68, 0.88);
+
+    /* Typography — Dark Mode */
+    --text-primary: #F4F7FA;
+    --text-secondary: #DCE7EF;
+    --text-body: #C0CDD8;
+    --text-muted: #8FA2B5;
+    --text-labels: #A9BBCB;
+    --text-cyan: #58C7E8;
+
+    /* Accents & Borders */
+    --accent-primary: #58C7E8;
+    --accent-secondary: #38BDF8;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-card: rgba(255, 255, 255, 0.07);
+    --shadow-soft: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+
+    /* Landscape Dark Mode */
+    --landscape-sky-top: #0B101D;
+    --landscape-sky-mid: #101827;
+    --landscape-sky-bottom: #152438;
+    --landscape-horizon: #58C7E8;
+    --landscape-mist: rgba(45, 82, 98, 0.28);
+
+    /* Hills Dark Mode: Forest Greens */
+    --hill-1-top: #1F3845;
+    --hill-1-mid: #192F3B;
+    --hill-1-bot: #122129;
+    --hill-2-top: #1A362C;
+    --hill-2-mid: #152C24;
+    --hill-2-bot: #0E1D18;
+    --hill-3-top: #132820;
+    --hill-3-mid: #0F2019;
+    --hill-3-bot: #0A1612;
+    --hill-4-top: #0F221A;
+    --hill-4-mid: #0B1A14;
+    --hill-4-bot: #07110D;
+
+    /* Webstrips Dark Mode */
+    --webstrip-primary: #58C7E8;
+    --webstrip-secondary: #00E599;
+    --webstrip-opacity: 0.85;
+    --webstrip-glow: 0.024;
+    --webstrip-brightness: 0.90;
+
+    /* Buttons */
+    --btn-primary-bg: linear-gradient(135deg, #0E7490, #0284C7);
+    --btn-primary-text: #FFFFFF;
+    --btn-secondary-bg: rgba(23, 35, 56, 0.80);
+    --btn-secondary-text: #F2F4F0;
+    --btn-secondary-border: rgba(255, 255, 255, 0.12);
+
+    /* Legacy mapping for dashboard compatibility */
+    --card-bg: #131B2E;
+    --border-color: #1E293B;
+    --text-main: #F4F7FA;
   }
 
   body {
     background-color: var(--bg-main);
-    color: var(--text-main);
-    transition: background-color 0.25s ease, color 0.25s ease;
+    color: var(--text-primary);
+    transition: background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1), color 0.4s ease;
   }
 }
 
