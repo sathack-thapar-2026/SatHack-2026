@@ -124,12 +124,6 @@ export default function DashboardHeader({
             )}
           </button>
 
-          {/* Payment Status Badge */}
-          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 dark:bg-[#0070BA]/10 dark:border-blue-500/20 text-[11px] font-medium text-[#0070BA] dark:text-sky-300">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" />
-            <span>Escrow Active</span>
-          </div>
-
           {/* Notifications */}
           <button
             type="button"
