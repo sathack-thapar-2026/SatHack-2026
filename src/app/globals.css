@@ -9,55 +9,58 @@
 @layer base {
   :root {
     /* ========================================================
-       LIGHT MODE — DAYLIGHT LANDSCAPE & DESIGN TOKENS
+       LIGHT MODE — ETHEREAL DAYLIGHT LANDSCAPE & DESIGN TOKENS
        ======================================================== */
-    --background: #EAF4FA;
-    --bg-main: #EAF4FA;
-    --bg-secondary: #DFEDF7;
+    --background: #F0F7FD;
+    --bg-main: #F0F7FD;
+    --bg-secondary: #E4F2FA;
     --surface: #FFFFFF;
-    --surface-glass: rgba(255, 255, 255, 0.78);
+    --surface-glass: rgba(255, 255, 255, 0.82);
     --surface-glass-border: rgba(23, 43, 67, 0.08);
-    --surface-hover: rgba(255, 255, 255, 0.92);
+    --surface-hover: rgba(255, 255, 255, 0.95);
 
     /* Typography — Light Mode */
     --text-primary: #172B43;
-    --text-secondary: #29445E;
-    --text-body: #526B82;
-    --text-muted: #788DA0;
-    --text-labels: #657D93;
-    --text-cyan: #078FBE;
+    --text-secondary: #24415C;
+    --text-body: #1E3A56;
+    --text-muted: #5E7A94;
+    --text-labels: #4B6780;
+    --text-cyan: #0284C7;
 
     /* Accents & Borders */
-    --accent-primary: #078FBE;
-    --accent-secondary: #0E7490;
+    --accent-primary: #0284C7;
+    --accent-secondary: #06B6D4;
     --border-subtle: rgba(23, 43, 67, 0.10);
     --border-card: rgba(23, 43, 67, 0.08);
-    --shadow-soft: 0 10px 30px -10px rgba(23, 43, 67, 0.08);
+    --shadow-soft: 0 12px 36px -10px rgba(7, 143, 190, 0.10);
 
-    /* Landscape Light Mode */
-    --landscape-sky-top: #EAF4FA;
-    --landscape-sky-mid: #E1EFF8;
-    --landscape-sky-bottom: #D5E6F2;
-    --landscape-horizon: #709886;
-    --landscape-mist: rgba(240, 248, 255, 0.40);
+    /* Landscape Light Mode — Ethereal Morning Atmosphere */
+    --landscape-sky-top: #F0F7FD;
+    --landscape-sky-mid: #E2F0FA;
+    --landscape-sky-bottom: #D2E9F6;
+    --landscape-horizon: #58B6D8;
+    --landscape-mist: rgba(255, 255, 255, 0.55);
 
-    /* Hills Light Mode: Sage Greens */
-    --hill-1-top: #7E9E8F;
-    --hill-1-mid: #6C8E7F;
-    --hill-1-bot: #5C7E70;
-    --hill-2-top: #5C7F6F;
-    --hill-2-mid: #4E7061;
-    --hill-2-bot: #406052;
-    --hill-3-top: #3D6051;
-    --hill-3-mid: #325043;
-    --hill-3-bot: #274035;
-    --hill-4-top: #284438;
-    --hill-4-mid: #1E342B;
-    --hill-4-bot: #16261F;
+    /* Hills Light Mode: Ethereal Pastel Sage & Alpine Mint */
+    --hill-1-top: #BEDAD4;
+    --hill-1-mid: #ACCCC4;
+    --hill-1-bot: #9ABCB4;
+    --hill-2-top: #94BAAF;
+    --hill-2-mid: #80A89C;
+    --hill-2-bot: #6E968A;
+    --hill-3-top: #68988A;
+    --hill-3-mid: #558276;
+    --hill-3-bot: #447064;
+    --hill-4-top: #447266;
+    --hill-4-mid: #345E52;
+    --hill-4-bot: #264C42;
 
     /* Webstrips Light Mode */
-    --webstrip-primary: #078FBE;
-    --webstrip-secondary: #0EA5E9;
+    --webstrip-primary: #0284C7;
+    --webstrip-secondary: #06B6D4;
+    --webstrip-opacity: 0.72;
+    --webstrip-glow: 0.020;
+    --webstrip-brightness: 0.85;
     --webstrip-opacity: 0.60;
     --webstrip-glow: 0.012;
     --webstrip-brightness: 0.70;
