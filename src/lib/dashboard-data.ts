@@ -498,6 +498,8 @@ export function generateInvitationToken(): string {
 
 export interface MilestoneOSUser {
   id: string;
+  /** True when this is the signed-in user's own account (requests to yourself are allowed). */
+  isSelf?: boolean;
   baseCode?: string;
   clientId?: string;
   freelancerId?: string;

@@ -37,8 +37,8 @@ export function escapeLike(value: string): string {
  * 1. Normalizes the entered ID (anything that is not a strict ID/email/UUID is rejected).
  * 2. Queries public.profiles by id, email, or milestone_os_id.
  * 3. Validates that the profile exists.
- * 4. Prevents self-assignment (proposer cannot be recipient).
- * 5. Returns the exact Supabase Auth UUID and profile attributes.
+ * 4. Returns the exact Supabase Auth UUID and profile attributes.
+ *    (An account may address a request to its OWN other role, e.g. its client ID to its freelancer ID.)
  *
  * Every PayZorr account owns both a client ID (CL-) and a freelancer ID (FL-)
  * derived from one shared base code, so any account can act on either side.
@@ -49,7 +49,7 @@ export async function resolveCounterpartyIdentity(params: {
   proposerId?: string | null;
   proposerEmail?: string | null;
 }): Promise<IdentityResolutionResult> {
-  const { identifier, expectedRole, proposerId, proposerEmail } = params;
+  const { identifier, expectedRole } = params;
 
   if (!identifier || typeof identifier !== "string" || !identifier.trim()) {
     return {
@@ -150,20 +150,6 @@ export async function resolveCounterpartyIdentity(params: {
       success: false,
       error: `No registered account found matching "${rawInput}". Please verify the account ID.`,
       code: "NOT_FOUND",
-    };
-  }
-
-  // Self-assignment check: recipient cannot be the same as proposer
-  const cleanProposerId = proposerId?.trim().toLowerCase();
-  const cleanProposerEmail = proposerEmail?.trim().toLowerCase();
-  if (
-    (cleanProposerId && String(profile.id).toLowerCase() === cleanProposerId) ||
-    (cleanProposerEmail && String(profile.email || "").toLowerCase() === cleanProposerEmail)
-  ) {
-    return {
-      success: false,
-      error: "You cannot create a project proposal or request addressed to your own account.",
-      code: "SELF_ASSIGNMENT",
     };
   }
 

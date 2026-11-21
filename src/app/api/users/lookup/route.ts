@@ -34,21 +34,24 @@ export async function GET(req: NextRequest) {
     if (isList) {
       if (!serverSupabase) throw new DomainError(503, "Directory is unavailable.", "DB_UNAVAILABLE");
 
-      const { data: listData, error: listErr } = await serverSupabase
-        .from("profiles")
-        .select("id, milestone_os_id, full_name, email, role, avatar, company, title, rating")
-        .neq("id", caller.id)
-        .order("full_name", { ascending: true })
-        .limit(30);
-      if (listErr) {
-        console.error("Directory listing failed:", listErr);
+      const columns = "id, milestone_os_id, full_name, email, role, avatar, company, title, rating";
+      const [othersRes, selfRes] = await Promise.all([
+        serverSupabase.from("profiles").select(columns).neq("id", caller.id).order("full_name", { ascending: true }).limit(30),
+        serverSupabase.from("profiles").select(columns).eq("id", caller.id).maybeSingle(),
+      ]);
+      if (othersRes.error) {
+        console.error("Directory listing failed:", othersRes.error);
         throw new DomainError(500, "Could not load the directory.");
       }
 
-      const users = (listData || []).map((row) => {
+      // The caller's own account comes first: an account can send a request to its own other role.
+      const listData = [...(selfRes.data ? [selfRes.data] : []), ...(othersRes.data || [])];
+
+      const users = listData.map((row) => {
         const base = extractBaseCode(row.milestone_os_id) || String(row.id).slice(0, 6).toUpperCase();
         return {
           id: row.id,
+          isSelf: row.id === caller.id,
           baseCode: base,
           clientId: formatClientId(base),
           freelancerId: formatFreelancerId(base),
@@ -101,7 +104,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       success: true,
       found: true,
-      user: { ...result.user, email: maskEmail(result.user.email) },
+      user: { ...result.user, email: maskEmail(result.user.email), isSelf: result.user.id === caller.id },
     });
   } catch (err) {
     if (err instanceof DomainError) {

@@ -220,10 +220,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (!isPublicInvitation && clientData.id && freelancerData.id && clientData.id === freelancerData.id) {
-      throw new DomainError(400, "Client and Freelancer must be different registered users. Self-assignment is not permitted.");
-    }
-
     const proposerName = initiatedBy === "client" ? clientData.name : freelancerData.name;
     const activity: ActivityItem = {
       id: newId("act"),

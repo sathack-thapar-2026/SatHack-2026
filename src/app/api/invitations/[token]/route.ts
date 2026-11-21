@@ -108,9 +108,6 @@ export async function POST(
     }
 
     if (action === "accept") {
-      if (isProposer) {
-        throw new DomainError(400, "You created this proposal. You cannot accept your own invitation.", "SELF_ACCEPT");
-      }
       // A proposal addressed to a specific registered user can only be accepted by that user.
       if (!project.isPublicInvitation && !callerIsRecipient(project, caller)) {
         throw new DomainError(403, "This proposal was addressed to a different account.", "FORBIDDEN");

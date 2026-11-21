@@ -253,16 +253,8 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
       .then((r) => r.json())
       .then((d) => {
         if (d.success && Array.isArray(d.users)) {
-          const myId = authUser?.id;
-          const myEmail = authUser?.email?.trim().toLowerCase();
-          const myBase = extractBaseCode(authUser?.milestoneOSId) || extractBaseCode(myProfile?.milestoneOSId);
-          const filtered = d.users.filter((u: any) => {
-            if (myId && u.id === myId) return false;
-            if (myEmail && u.email?.trim().toLowerCase() === myEmail) return false;
-            if (myBase && (extractBaseCode(u.milestoneOSId) === myBase || extractBaseCode(u.clientId) === myBase || extractBaseCode(u.freelancerId) === myBase)) return false;
-            return true;
-          });
-          setRegisteredCounterparties(filtered);
+          // Includes the user's own account (flagged isSelf) so a request can go to their other role.
+          setRegisteredCounterparties(d.users);
         }
       })
       .catch(() => {})
@@ -321,14 +313,6 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
       return;
     }
 
-    // Prevent self-selection
-    const myBase = extractBaseCode(myProfile?.milestoneOSId) || extractBaseCode(authUser?.baseCode);
-    if (myBase && baseCode === myBase) {
-      setLookupError("You cannot initiate a proposal with your own account ID.");
-      setSelectedUser(null);
-      return;
-    }
-
     setIsSearching(true);
     try {
       const expectedRole = isClient ? "freelancer" : "client";
@@ -345,6 +329,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
       const targetRole: "client" | "freelancer" = isClient ? "freelancer" : "client";
       const found: MilestoneOSUser = {
         id: data.user.id,
+        isSelf: Boolean(data.user.isSelf),
         baseCode: data.user.baseCode || baseCode,
         clientId: data.user.clientId || formatClientId(baseCode),
         freelancerId: data.user.freelancerId || formatFreelancerId(baseCode),
@@ -830,7 +815,7 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                                   }}
                                   className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-[11px] text-slate-700 dark:text-slate-200 cursor-pointer transition-colors flex items-center gap-1.5"
                                 >
-                                  <span className="font-semibold">{u.name}</span>
+                                  <span className="font-semibold">{u.isSelf ? `${u.name} (You)` : u.name}</span>
                                   <span className="font-mono text-[10px] text-[#0070BA] dark:text-sky-400">({displayId})</span>
                                 </button>
                               );
@@ -849,11 +834,11 @@ export default function NewProjectModal({ isOpen, onClose, initialProject }: New
                         <div>
                           <div className="flex items-center gap-2">
                             <h4 className="font-bold text-slate-900 dark:text-white text-xs">
-                              {selectedUser.name}
+                              {selectedUser.name}{selectedUser.isSelf ? " (You)" : ""}
                             </h4>
                             <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
                               <CheckCircle2 className="h-2.5 w-2.5" />
-                              <span>{isClient ? "Verified Freelancer" : "Verified Client"}</span>
+                              <span>{selectedUser.isSelf ? (isClient ? "Your Freelancer profile" : "Your Client profile") : isClient ? "Verified Freelancer" : "Verified Client"}</span>
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
