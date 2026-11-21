@@ -28,7 +28,9 @@ export default function EditProjectModal({ project, isOpen, onClose }: EditProje
     setCategory(project.category);
     setTargetDeadline(project.targetDeadline);
     setStatus(project.status);
-  }, [project, isOpen]);
+    // Re-fill the form when this project is opened, not whenever the server sends a refreshed copy of it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id, isOpen]);
 
   if (!isOpen) return null;
 

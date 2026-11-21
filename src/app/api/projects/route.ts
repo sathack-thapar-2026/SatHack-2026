@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const roleParam = searchParams.get("role");
     const role = roleParam === "client" || roleParam === "freelancer" ? roleParam : undefined;
 
-    const projects = await db.getProjects({
+    const { projects, version } = await db.getProjectsWithVersion({
       userId: caller.id,
       userEmail: caller.email,
       milestoneOSId: caller.milestoneOSId,
@@ -48,9 +48,16 @@ export async function GET(req: NextRequest) {
       status,
     });
 
+    // ?versionOnly=1 is what the dashboard polls: a few bytes that change whenever any of the caller's
+    // projects changes, so the (large) project list is only downloaded when there is something new.
+    if (searchParams.get("versionOnly") === "1") {
+      return NextResponse.json({ success: true, version, count: projects.length });
+    }
+
     return NextResponse.json({
       success: true,
       count: projects.length,
+      version,
       projects,
     });
   } catch (err) {

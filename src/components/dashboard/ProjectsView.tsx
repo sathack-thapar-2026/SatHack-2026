@@ -120,7 +120,7 @@ export default function ProjectsView({
               : "bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
-          All Projects ({filteredProjects.length})
+          All Projects ({activeProjects.length})
         </button>
 
         <button
@@ -314,8 +314,17 @@ export default function ProjectsView({
           </div>
 
           {activeProjects.length === 0 ? (
-            <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl">
-              No active projects found.
+            <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl space-y-2">
+              <p>No active projects found.</p>
+              {completedProjects.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setFilterTab("completed")}
+                  className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                >
+                  View {completedProjects.length} completed project{completedProjects.length === 1 ? "" : "s"}
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -396,9 +405,9 @@ export default function ProjectsView({
         </div>
       )}
 
-      {/* SECTION 2: COMPLETED PROJECTS (Dedicated Section) */}
-      {(filterTab === "all" || filterTab === "completed") && (
-        <div className="space-y-4 pt-4 border-t border-slate-200/70 dark:border-white/10">
+      {/* SECTION 2: COMPLETED PROJECTS (only visible in the Completed tab, never in "All Projects") */}
+      {filterTab === "completed" && (
+        <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">

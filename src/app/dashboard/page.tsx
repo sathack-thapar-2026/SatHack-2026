@@ -43,6 +43,7 @@ function DashboardInner() {
     alertState,
     authUser,
     isLoaded,
+    allProjects,
   } = useDashboard();
   const router = useRouter();
 
@@ -106,6 +107,23 @@ function DashboardInner() {
     project: ProjectContract;
     milestone: Milestone;
   } | null>(null);
+
+  // Always show the CURRENT project/milestone in a pop-up (looked up by id), never the copy taken when it was opened.
+  const resolveLive = <T extends { project: ProjectContract; milestone: Milestone }>(target: T | null): T | null => {
+    if (!target) return null;
+    const project = allProjects.find((p) => p.id === target.project.id) ?? target.project;
+    const milestone = project.milestones.find((m) => m.id === target.milestone.id) ?? target.milestone;
+    return { ...target, project, milestone };
+  };
+  const liveAudit = resolveLive(auditTarget);
+  const liveSubmission = resolveLive(submissionTarget);
+  const liveRevision = resolveLive(revisionTarget);
+  const livePayment = resolveLive(paymentTarget);
+  const liveInvoice = resolveLive(invoiceTarget);
+  const liveEditingMilestone = resolveLive(editingMilestoneTarget);
+  const liveProposal = reviewingProposalProject
+    ? allProjects.find((p) => p.id === reviewingProposalProject.id) ?? reviewingProposalProject
+    : null;
 
   // The dashboard only exists for signed-in users: once the sign-in check finishes, send everyone else to /auth.
   useEffect(() => {
@@ -351,24 +369,24 @@ function DashboardInner() {
       />
 
       {/* AUDIT / INSPECTION MODAL */}
-      {auditTarget && (
+      {liveAudit && (
         <AuditModal
-          project={auditTarget.project}
-          milestone={auditTarget.milestone}
+          project={liveAudit.project}
+          milestone={liveAudit.milestone}
           isOpen={true}
           onClose={() => setAuditTarget(null)}
           onOpenRevisionModal={() => {
-            const t = auditTarget;
+            const t = liveAudit;
             setAuditTarget(null);
             setRevisionTarget(t);
           }}
           onOpenPaymentModal={() => {
-            const t = auditTarget;
+            const t = liveAudit;
             setAuditTarget(null);
             setPaymentTarget(t);
           }}
           onOpenSubmissionModal={() => {
-            const t = auditTarget;
+            const t = liveAudit;
             setAuditTarget(null);
             setSubmissionTarget(t);
           }}
@@ -376,30 +394,30 @@ function DashboardInner() {
       )}
 
       {/* SUBMISSION MODAL */}
-      {submissionTarget && (
+      {liveSubmission && (
         <SubmissionModal
-          project={submissionTarget.project}
-          milestone={submissionTarget.milestone}
+          project={liveSubmission.project}
+          milestone={liveSubmission.milestone}
           isOpen={true}
           onClose={() => setSubmissionTarget(null)}
         />
       )}
 
       {/* REVISION REQUEST MODAL */}
-      {revisionTarget && (
+      {liveRevision && (
         <RevisionRequestModal
-          project={revisionTarget.project}
-          milestone={revisionTarget.milestone}
+          project={liveRevision.project}
+          milestone={liveRevision.milestone}
           isOpen={true}
           onClose={() => setRevisionTarget(null)}
         />
       )}
 
       {/* PAYMENT MODAL */}
-      {paymentTarget && (
+      {livePayment && (
         <PaymentModal
-          project={paymentTarget.project}
-          milestone={paymentTarget.milestone}
+          project={livePayment.project}
+          milestone={livePayment.milestone}
           isOpen={true}
           onClose={() => setPaymentTarget(null)}
           onOpenInvoice={(p, m, tx) => setInvoiceTarget({ project: p, milestone: m, transactionId: tx })}
@@ -407,11 +425,11 @@ function DashboardInner() {
       )}
 
       {/* INVOICE MODAL */}
-      {invoiceTarget && (
+      {liveInvoice && (
         <InvoiceModal
-          project={invoiceTarget.project}
-          milestone={invoiceTarget.milestone}
-          transactionId={invoiceTarget.transactionId}
+          project={liveInvoice.project}
+          milestone={liveInvoice.milestone}
+          transactionId={liveInvoice.transactionId}
           isOpen={true}
           onClose={() => setInvoiceTarget(null)}
         />
@@ -438,7 +456,7 @@ function DashboardInner() {
 
       {/* PROPOSAL REVIEW MODAL */}
       <ProposalReviewModal
-        project={reviewingProposalProject}
+        project={liveProposal}
         isOpen={!!reviewingProposalProject}
         onClose={() => setReviewingProposalProject(null)}
         onOpenRevision={(proj) => {
@@ -458,10 +476,10 @@ function DashboardInner() {
       )}
 
       {/* EDIT MILESTONE MODAL */}
-      {editingMilestoneTarget && (
+      {liveEditingMilestone && (
         <EditMilestoneModal
-          project={editingMilestoneTarget.project}
-          milestone={editingMilestoneTarget.milestone}
+          project={liveEditingMilestone.project}
+          milestone={liveEditingMilestone.milestone}
           isOpen={true}
           onClose={() => setEditingMilestoneTarget(null)}
         />

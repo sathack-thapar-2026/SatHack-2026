@@ -271,6 +271,38 @@ export function DashboardProvider({
     authUserRef.current = authUser;
   }, [authUser]);
 
+  // Background-sync bookkeeping (refs, so timers and handlers always see the current values).
+  const syncRef = useRef({
+    inFlight: null as Promise<void> | null, // a sync is running: never start a second one on top of it
+    rerun: false, // a forced refresh was requested while one was running
+    mutations: 0, // actions currently being saved: don't overwrite the screen with older server data meanwhile
+    version: "", // last project-list version we applied
+    notificationsAt: 0,
+    failures: 0,
+  });
+  const actionLocks = useRef(new Set<string>());
+  const creatingRef = useRef(false);
+  const lastCreatedIdRef = useRef("");
+
+  /** Like authFetch, but counted as "an action is being saved" so background syncs wait for it. */
+  const mutFetch = (input: string, init?: RequestInit): Promise<Response> => {
+    syncRef.current.mutations++;
+    return authFetch(input, init).finally(() => {
+      syncRef.current.mutations = Math.max(0, syncRef.current.mutations - 1);
+    });
+  };
+
+  /** Runs `fn` unless the same action (same key) is still being saved, so repeated clicks do not repeat the action. */
+  const runOnce = async <T,>(key: string, fn: () => T | Promise<T>, whenBusy: T): Promise<T> => {
+    if (actionLocks.current.has(key)) return whenBusy;
+    actionLocks.current.add(key);
+    try {
+      return await fn();
+    } finally {
+      actionLocks.current.delete(key);
+    }
+  };
+
   // Derive active perspective user profiles
   const userProfiles: UserProfiles = useMemo(() => {
     // Signed-out visitors get neutral placeholders; nobody else's identity is ever assumed.
@@ -472,10 +504,32 @@ export function DashboardProvider({
     refreshProjects();
   };
 
-  // Fetch projects from server scoped to the current authenticated user (identity = verified session token)
-  // Reads the signed-in user from authUserRef (not from a render closure), so it is safe to call from
-  // timers and focus handlers that were created earlier.
-  const refreshProjects = async () => {
+  // Brings the screen up to date with the server (identity = verified session token).
+  //  - never runs two syncs at once, and waits while an action is being saved;
+  //  - normally asks only for a tiny "version" and downloads the lists when it changed;
+  //  - `force` (used after an action) always downloads.
+  // Reads the signed-in user from authUserRef, so it is safe to call from timers created earlier.
+  const refreshProjects = (force: boolean = true): Promise<void> => {
+    const sync = syncRef.current;
+    if (sync.inFlight) {
+      if (force) sync.rerun = true; // run once more after the current one, so we never show data older than the action
+      return sync.inFlight;
+    }
+    sync.inFlight = (async () => {
+      try {
+        await runSync(force);
+      } finally {
+        sync.inFlight = null;
+        if (sync.rerun) {
+          sync.rerun = false;
+          await refreshProjects(true);
+        }
+      }
+    })();
+    return sync.inFlight;
+  };
+
+  const runSync = async (force: boolean): Promise<void> => {
     try {
       localStorage.removeItem(STORAGE_KEYS.DEMO_MODE);
       localStorage.removeItem("milestoneos_demo_mode");
@@ -485,33 +539,61 @@ export function DashboardProvider({
     const user = authUserRef.current;
     if (!user?.id) return; // never fetch anybody's data without a signed-in user
 
+    const sync = syncRef.current;
+    if (sync.mutations > 0) return; // an action is being saved; its own completion refreshes afterwards
+
     const readJson = (r: Response) => r.json().catch(() => ({}));
     try {
-      const [pRes, tRes, nRes] = await Promise.all([
-        authFetch("/api/projects").then(readJson).catch(() => ({})),
-        authFetch("/api/transactions").then(readJson).catch(() => ({})),
-        authFetch("/api/notifications").then(readJson).catch(() => ({})),
-      ]);
-
-      // Only replace what we have when the server actually answered; a failed poll keeps the current view.
-      if (pRes?.success && Array.isArray(pRes.projects)) {
-        setRawProjects(pRes.projects);
-        try {
-          localStorage.setItem(`milestoneos_projects_${user.id}`, JSON.stringify(slimProjectsForCache(pRes.projects)));
-        } catch (_) {}
+      let needFull = force || !sync.version;
+      if (!needFull) {
+        const versionRes = await authFetch("/api/projects?versionOnly=1").then(readJson);
+        if (!versionRes?.success) throw new Error("version check failed");
+        needFull = versionRes.version !== sync.version;
       }
 
-      if (tRes?.success && Array.isArray(tRes.transactions)) {
-        setTransactions(tRes.transactions);
-        try {
-          localStorage.setItem(`milestoneos_transactions_${user.id}`, JSON.stringify(tRes.transactions));
-        } catch (_) {}
-      }
+      if (needFull) {
+        const [pRes, tRes, nRes] = await Promise.all([
+          authFetch("/api/projects").then(readJson).catch(() => ({})),
+          authFetch("/api/transactions").then(readJson).catch(() => ({})),
+          authFetch("/api/notifications").then(readJson).catch(() => ({})),
+        ]);
 
-      if (nRes?.success && Array.isArray(nRes.notifications)) {
-        setNotifications(nRes.notifications);
+        // An action started while we were downloading: our copy is already older than the screen, so drop it.
+        if (sync.mutations > 0) return;
+
+        // Only replace what we have when the server actually answered; a failed poll keeps the current view.
+        if (pRes?.success && Array.isArray(pRes.projects)) {
+          setRawProjects(pRes.projects);
+          sync.version = pRes.version || "";
+          try {
+            localStorage.setItem(`milestoneos_projects_${user.id}`, JSON.stringify(slimProjectsForCache(pRes.projects)));
+          } catch (_) {}
+        } else {
+          throw new Error("project refresh failed");
+        }
+
+        if (tRes?.success && Array.isArray(tRes.transactions)) {
+          setTransactions(tRes.transactions);
+          try {
+            localStorage.setItem(`milestoneos_transactions_${user.id}`, JSON.stringify(tRes.transactions));
+          } catch (_) {}
+        }
+
+        if (nRes?.success && Array.isArray(nRes.notifications)) {
+          setNotifications(nRes.notifications);
+        }
+        sync.notificationsAt = Date.now();
+      } else if (Date.now() - sync.notificationsAt > 60_000) {
+        // Nothing changed in the projects, but keep notifications reasonably fresh.
+        const nRes = await authFetch("/api/notifications").then(readJson).catch(() => ({}));
+        if (sync.mutations === 0 && nRes?.success && Array.isArray(nRes.notifications)) {
+          setNotifications(nRes.notifications);
+        }
+        sync.notificationsAt = Date.now();
       }
+      sync.failures = 0;
     } catch (err) {
+      sync.failures++;
       console.warn("Could not refresh projects:", err);
     }
   };
@@ -646,6 +728,8 @@ export function DashboardProvider({
           if (!mounted) return;
           if (pData?.success && Array.isArray(pData.projects)) {
             setRawProjects(pData.projects);
+            syncRef.current.version = pData.version || "";
+            syncRef.current.notificationsAt = Date.now();
             try {
               localStorage.setItem(`milestoneos_projects_${uId}`, JSON.stringify(slimProjectsForCache(pData.projects)));
             } catch (_) {}
@@ -787,29 +871,43 @@ export function DashboardProvider({
     } catch (_) {}
   }, [transactions, isLoaded, authUser]);
 
-  // Real-time synchronization: sync on window focus and periodic interval
+  // Background sync: one check every 15 s while the tab is visible (slower after failures), plus a check
+  // when the tab/window becomes active again. Checks never overlap (see refreshProjects).
   useEffect(() => {
     if (!isLoaded) return;
 
-    const handleFocus = () => {
-      refreshProjects();
-    };
-    window.addEventListener("focus", handleFocus);
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
-    const interval = setInterval(() => {
-      refreshProjects();
-    }, 8000);
+    const tick = async () => {
+      if (stopped) return;
+      if (document.visibilityState === "visible") await refreshProjects(false);
+      if (stopped) return;
+      const delay = Math.min(15_000 * 2 ** Math.min(syncRef.current.failures, 3), 120_000);
+      timer = setTimeout(tick, delay);
+    };
+    const wake = () => {
+      if (document.visibilityState !== "visible") return;
+      if (timer) clearTimeout(timer);
+      tick();
+    };
+
+    window.addEventListener("focus", wake);
+    document.addEventListener("visibilitychange", wake);
+    timer = setTimeout(tick, 15_000);
 
     return () => {
-      window.removeEventListener("focus", handleFocus);
-      clearInterval(interval);
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("focus", wake);
+      document.removeEventListener("visibilitychange", wake);
     };
     // refreshProjects only depends on refs and state setters, so the first closure is always correct.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded]);
 
   // Action: Create Project / Propose Project
-  const createProject = (
+  const createProjectImpl = (
     newProjectData: Omit<
       ProjectContract,
       "id" | "createdAt" | "totalPaid" | "escrowFunded" | "escrowReleased" | "activityLog"
@@ -875,7 +973,7 @@ export function DashboardProvider({
     setActiveProjectIdState(id);
 
     // Sync to backend API & Supabase. The server decides who the proposer is (from the signed-in session).
-    authFetch("/api/projects", {
+    mutFetch("/api/projects", {
       method: "POST",
       body: JSON.stringify(newProject),
     })
@@ -899,6 +997,9 @@ export function DashboardProvider({
         console.warn("Failed to sync project creation to API:", err);
         setRawProjects((prev) => prev.filter((p) => p.id !== id));
         showToast("Could not reach the server. The proposal was not created.", "warning");
+      })
+      .finally(() => {
+        creatingRef.current = false;
       });
 
     if (!asDraft) {
@@ -933,7 +1034,7 @@ export function DashboardProvider({
   const updateProject = async (projectId: string, updates: Partial<ProjectContract>) => {
     setRawProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, ...updates } : p)));
     try {
-      const res = await authFetch(`/api/projects/${projectId}`, {
+      const res = await mutFetch(`/api/projects/${projectId}`, {
         method: "PATCH",
         body: JSON.stringify(updates),
       });
@@ -953,7 +1054,7 @@ export function DashboardProvider({
     updateProject(projectId, { status: "archived" });
   };
 
-  const acceptProposal = async (projectId: string) => {
+  const acceptProposalImpl = async (projectId: string) => {
     const target = rawProjects.find((p) => p.id === projectId);
     const projTitle = target?.title || "";
     const actorName = userProfiles[role].name;
@@ -1002,7 +1103,7 @@ export function DashboardProvider({
 
     // Persist acceptance to server database & Supabase (the server verifies who is accepting)
     try {
-      const res = await authFetch(`/api/projects/${projectId}/proposals`, {
+      const res = await mutFetch(`/api/projects/${projectId}/proposals`, {
         method: "POST",
         body: JSON.stringify({ action: "accept" }),
       });
@@ -1034,9 +1135,9 @@ export function DashboardProvider({
     }
   };
 
-  const requestProposalChanges = async (projectId: string, feedback: string) => {
+  const requestProposalChangesImpl = async (projectId: string, feedback: string) => {
     try {
-      const res = await authFetch(`/api/projects/${projectId}/proposals`, {
+      const res = await mutFetch(`/api/projects/${projectId}/proposals`, {
         method: "POST",
         body: JSON.stringify({ action: "request_changes", feedback }),
       });
@@ -1053,7 +1154,7 @@ export function DashboardProvider({
     }
   };
 
-  const rejectProposal = async (projectId: string, reason?: string) => {
+  const rejectProposalImpl = async (projectId: string, reason?: string) => {
     try {
       // Immediately remove from local state so the view clears right away (restored by the refresh if it fails)
       setRawProjects((prev) => prev.filter((p) => p.id !== projectId));
@@ -1061,7 +1162,7 @@ export function DashboardProvider({
         setActiveProjectIdState("");
       }
 
-      const res = await authFetch(`/api/projects/${projectId}/proposals`, {
+      const res = await mutFetch(`/api/projects/${projectId}/proposals`, {
         method: "POST",
         body: JSON.stringify({ action: "reject", feedback: reason }),
       });
@@ -1078,7 +1179,7 @@ export function DashboardProvider({
     }
   };
 
-  const resubmitProposal = async (projectId: string, updatedData: Partial<ProjectContract>) => {
+  const resubmitProposalImpl = async (projectId: string, updatedData: Partial<ProjectContract>) => {
     const actorName = userProfiles[role].name;
     setRawProjects((prev) =>
       prev.map((p) => {
@@ -1103,7 +1204,7 @@ export function DashboardProvider({
 
     // Persist revised proposal to server database & Supabase
     try {
-      const res = await authFetch(`/api/projects/${projectId}/proposals`, {
+      const res = await mutFetch(`/api/projects/${projectId}/proposals`, {
         method: "POST",
         body: JSON.stringify({ action: "resubmit", updatedData }),
       });
@@ -1122,7 +1223,7 @@ export function DashboardProvider({
     }
   };
 
-  const revokeInvitation = async (projectId: string) => {
+  const revokeInvitationImpl = async (projectId: string) => {
     const target = rawProjects.find((p) => p.id === projectId);
     const token = target?.invitationToken;
     if (!token) {
@@ -1152,7 +1253,7 @@ export function DashboardProvider({
     );
 
     try {
-      const res = await authFetch(`/api/invitations/${encodeURIComponent(token)}`, {
+      const res = await mutFetch(`/api/invitations/${encodeURIComponent(token)}`, {
         method: "POST",
         body: JSON.stringify({ action: "revoke" }),
       });
@@ -1171,7 +1272,7 @@ export function DashboardProvider({
     token: string
   ): Promise<{ success: boolean; project?: ProjectContract; error?: string }> => {
     try {
-      const res = await authFetch(`/api/invitations/${encodeURIComponent(token)}`, {
+      const res = await mutFetch(`/api/invitations/${encodeURIComponent(token)}`, {
         method: "POST",
         body: JSON.stringify({ action: "accept" }),
       });
@@ -1211,7 +1312,7 @@ export function DashboardProvider({
     }
   };
 
-  const addMilestone = (
+  const addMilestoneImpl = (
     projectId: string,
     data: {
       title: string;
@@ -1268,8 +1369,8 @@ export function DashboardProvider({
 
     // Sync to backend API
     const curr = rawProjects.find((p) => p.id === projectId)?.currency || "USD";
-    syncOrRevert(
-      authFetch("/api/milestones", {
+    return syncOrRevert(
+      mutFetch("/api/milestones", {
         method: "POST",
         body: JSON.stringify({
           projectId,
@@ -1286,7 +1387,7 @@ export function DashboardProvider({
     });
   };
 
-  const editMilestone = (
+  const editMilestoneImpl = (
     projectId: string,
     milestoneId: string,
     updates: {
@@ -1340,8 +1441,8 @@ export function DashboardProvider({
     );
 
     // Sync to backend API
-    syncOrRevert(
-      authFetch(`/api/milestones/${milestoneId}`, {
+    return syncOrRevert(
+      mutFetch(`/api/milestones/${milestoneId}`, {
         method: "PATCH",
         body: JSON.stringify({
           projectId,
@@ -1357,7 +1458,7 @@ export function DashboardProvider({
     });
   };
 
-  const startMilestoneWork = (projectId: string, milestoneId: string) => {
+  const startMilestoneWorkImpl = (projectId: string, milestoneId: string) => {
     setRawProjects((prev) =>
       prev.map((project) => {
         if (project.id !== projectId) return project;
@@ -1385,8 +1486,8 @@ export function DashboardProvider({
         };
       })
     );
-    syncOrRevert(
-      authFetch(`/api/milestones/${milestoneId}/start`, {
+    return syncOrRevert(
+      mutFetch(`/api/milestones/${milestoneId}/start`, {
         method: "POST",
         body: JSON.stringify({ projectId }),
       }),
@@ -1396,7 +1497,7 @@ export function DashboardProvider({
     });
   };
 
-  const submitMilestoneDeliverables = async (
+  const submitMilestoneDeliverablesImpl = async (
     projectId: string,
     milestoneId: string,
     deliverables: {
@@ -1474,7 +1575,7 @@ export function DashboardProvider({
     // Call API submit route for automated Gemini review and backend database persistence.
     // The server identifies the freelancer from the signed-in session, not from anything we send.
     try {
-      const res = await authFetch(`/api/milestones/${milestoneId}/submit`, {
+      const res = await mutFetch(`/api/milestones/${milestoneId}/submit`, {
         method: "POST",
         body: JSON.stringify({
           projectId,
@@ -1514,7 +1615,7 @@ export function DashboardProvider({
     requestChanges(projectId, milestoneId, reason);
   };
 
-  const requestChanges = (projectId: string, milestoneId: string, reason: string) => {
+  const requestChangesImpl = (projectId: string, milestoneId: string, reason: string) => {
     const target = rawProjects.find((p) => p.id === projectId);
     const milestoneTitle = target?.milestones.find((m) => m.id === milestoneId)?.title || "";
 
@@ -1546,8 +1647,8 @@ export function DashboardProvider({
     );
 
     // Sync to backend API (reverts the screen and explains if the server refuses)
-    syncOrRevert(
-      authFetch(`/api/milestones/${milestoneId}/review`, {
+    return syncOrRevert(
+      mutFetch(`/api/milestones/${milestoneId}/review`, {
         method: "POST",
         body: JSON.stringify({ projectId, action: "request_changes", feedback: reason }),
       }),
@@ -1557,7 +1658,7 @@ export function DashboardProvider({
     });
   };
 
-  const approveMilestone = async (projectId: string, milestoneId: string): Promise<boolean> => {
+  const approveMilestoneImpl = async (projectId: string, milestoneId: string): Promise<boolean> => {
     const target = rawProjects.find((p) => p.id === projectId);
     const milestoneTitle = target?.milestones.find((m) => m.id === milestoneId)?.title || "";
 
@@ -1589,7 +1690,7 @@ export function DashboardProvider({
 
     // Sync to backend API (reverts the screen and explains if the server refuses)
     const ok = await syncOrRevert(
-      authFetch(`/api/milestones/${milestoneId}/review`, {
+      mutFetch(`/api/milestones/${milestoneId}/review`, {
         method: "POST",
         body: JSON.stringify({ projectId, action: "approve" }),
       }),
@@ -1748,6 +1849,36 @@ export function DashboardProvider({
     refreshProjects();
     showToast("Workspace refreshed from server.", "info");
   };
+
+  // ---- Public actions: each one ignores repeated clicks while the same action is still being saved ----
+  const createProject = (...args: Parameters<typeof createProjectImpl>): string => {
+    if (creatingRef.current) return lastCreatedIdRef.current;
+    creatingRef.current = true;
+    const id = createProjectImpl(...args);
+    lastCreatedIdRef.current = id;
+    return id;
+  };
+  const acceptProposal = (projectId: string) => runOnce(`accept:${projectId}`, () => acceptProposalImpl(projectId), undefined);
+  const requestProposalChanges = (projectId: string, feedback: string) =>
+    runOnce(`propchanges:${projectId}`, () => requestProposalChangesImpl(projectId, feedback), undefined);
+  const rejectProposal = (projectId: string, reason?: string) =>
+    runOnce(`reject:${projectId}`, () => rejectProposalImpl(projectId, reason), undefined);
+  const resubmitProposal = (projectId: string, updatedData: Partial<ProjectContract>) =>
+    runOnce(`resubmit:${projectId}`, () => resubmitProposalImpl(projectId, updatedData), undefined);
+  const revokeInvitation = (projectId: string) =>
+    runOnce(`revoke:${projectId}`, () => revokeInvitationImpl(projectId), undefined);
+  const addMilestone = (...args: Parameters<typeof addMilestoneImpl>) =>
+    runOnce(`addms:${args[0]}`, () => addMilestoneImpl(...args), undefined);
+  const editMilestone = (...args: Parameters<typeof editMilestoneImpl>) =>
+    runOnce(`editms:${args[1]}`, () => editMilestoneImpl(...args), undefined);
+  const startMilestoneWork = (projectId: string, milestoneId: string) =>
+    runOnce(`start:${milestoneId}`, () => startMilestoneWorkImpl(projectId, milestoneId), undefined);
+  const submitMilestoneDeliverables = (...args: Parameters<typeof submitMilestoneDeliverablesImpl>) =>
+    runOnce(`submit:${args[1]}`, () => submitMilestoneDeliverablesImpl(...args), undefined);
+  const requestChanges = (projectId: string, milestoneId: string, reason: string) =>
+    runOnce(`changes:${milestoneId}`, () => requestChangesImpl(projectId, milestoneId, reason), undefined);
+  const approveMilestone = (projectId: string, milestoneId: string): Promise<boolean> =>
+    runOnce(`approve:${milestoneId}`, () => approveMilestoneImpl(projectId, milestoneId), false);
 
   return (
     <DashboardContext.Provider

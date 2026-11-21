@@ -41,7 +41,8 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
   if (init.body !== undefined && init.body !== null && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  const res = await fetch(input, { ...init, headers });
+  // Every request has a deadline, so a stuck request can never leave a button "busy" forever.
+  const res = await fetch(input, { ...init, headers, signal: init.signal ?? AbortSignal.timeout(90_000) });
   if (res.status === 401) handleSessionRejected();
   return res;
 }

@@ -22,6 +22,15 @@ export function hasServerSupabase(): boolean {
 
 let serverClientInstance: SupabaseClient | null = null;
 
+/** Upper bound for any single database/auth request made by the server. */
+const REQUEST_TIMEOUT_MS = 30_000;
+
+function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const deadline = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const signal = init?.signal ? AbortSignal.any([init.signal, deadline]) : deadline;
+  return fetch(input, { ...init, signal });
+}
+
 export function getServerSupabase(): SupabaseClient | null {
   if (!hasServerSupabase()) return null;
   if (!serverClientInstance) {
@@ -30,6 +39,7 @@ export function getServerSupabase(): SupabaseClient | null {
         autoRefreshToken: false,
         persistSession: false,
       },
+      global: { fetch: fetchWithTimeout },
     });
   }
   return serverClientInstance;

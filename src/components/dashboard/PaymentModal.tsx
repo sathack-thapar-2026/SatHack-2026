@@ -54,7 +54,7 @@ export default function PaymentModal({
   onClose,
   onOpenInvoice,
 }: PaymentModalProps) {
-  const { makePayment } = useDashboard();
+  const { makePayment, refreshProjects } = useDashboard();
   const [paymentState, setPaymentState] = useState<PaymentState>("idle");
   const [isCapturing, setIsCapturing] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
@@ -329,7 +329,13 @@ export default function PaymentModal({
                             });
                             const data = await res.json();
                             if (!res.ok || !data.success || !data.order?.orderId) {
-                              const msg = data.error || "Failed to create Secure Payments order.";
+                              // "Not approved" means the server does not have the approval (it may not have saved).
+                              // Re-sync the screen with the server so it stops showing this milestone as approved.
+                              const notApproved = data.code === "NOT_APPROVED";
+                              if (notApproved) refreshProjects();
+                              const msg = notApproved
+                                ? "The server does not have this milestone as approved yet. If you just approved it, the approval may not have saved. Close this window and approve it again, then pay."
+                                : data.error || "Failed to create Secure Payments order.";
                               setErrorMessage(msg);
                               setPaymentState("failed");
                               throw new Error(msg);

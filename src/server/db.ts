@@ -26,6 +26,7 @@ import {
   formatCurrency,
   roundMoney,
 } from "@/lib/dashboard-data";
+import { createHash } from "node:crypto";
 import type { CaptureOrderResult } from "./payments";
 import { getServerSupabase } from "./supabase";
 import { projectRoles } from "./auth";
@@ -66,6 +67,35 @@ function requireSupabase() {
     throw new DomainError(503, "The database is not configured on the server.", "DB_UNAVAILABLE");
   }
   return supabase;
+}
+
+/** Image uploads were stored twice (dataUrl and an identical url); keep one copy in the database. */
+function compactMilestonesForStorage(milestones: Milestone[]): Milestone[] {
+  return (milestones || []).map((m) => ({
+    ...m,
+    submissions: (m.submissions || []).map((sub) => ({
+      ...sub,
+      attachments: (sub.attachments || []).map((a) => {
+        if (a.dataUrl && a.url === a.dataUrl) {
+          const { url: _duplicate, ...rest } = a;
+          return rest;
+        }
+        return a;
+      }),
+    })),
+  }));
+}
+
+/** Re-creates the preview url for image uploads that were stored without it. */
+function restoreAttachmentUrls(milestones: Milestone[]): Milestone[] {
+  for (const m of milestones) {
+    for (const sub of m.submissions || []) {
+      for (const a of sub.attachments || []) {
+        if (!a.url && a.dataUrl && a.dataUrl.startsWith("data:image")) a.url = a.dataUrl;
+      }
+    }
+  }
+  return milestones;
 }
 
 function rowToProject(row: any): ProjectContract {
@@ -110,7 +140,7 @@ function rowToProject(row: any): ProjectContract {
     invitationToken: row.invitation_token || base.invitationToken,
     invitationStatus: row.invitation_status || base.invitationStatus,
     isDemo: Boolean(row.is_demo ?? base.isDemo),
-    milestones: Array.isArray(row.milestones) ? row.milestones : base.milestones || [],
+    milestones: restoreAttachmentUrls(Array.isArray(row.milestones) ? row.milestones : base.milestones || []),
     activityLog: Array.isArray(row.activity_log) ? row.activity_log : base.activityLog || [],
     createdAt:
       base.createdAt ||
@@ -167,9 +197,10 @@ function projectToRow(p: ProjectContract): any {
     invitation_token: p.invitationToken || null,
     invitation_status: p.invitationStatus || "active",
     is_demo: Boolean(p.isDemo),
-    milestones: p.milestones || [],
+    milestones: compactMilestonesForStorage(p.milestones || []),
     activity_log: p.activityLog || [],
-    data: p,
+    // milestones and the activity log already have their own columns; do not store them a second time here.
+    data: (({ milestones: _ms, activityLog: _log, ...rest }) => rest)(p),
     updated_at: new Date().toISOString(),
   };
 }
@@ -208,52 +239,123 @@ function rowToTransaction(row: any): TransactionRecord {
 }
 
 // ----------------------------------------------------------------------------
-// Short-lived read cache (list views only). Single-record reads and every
-// mutation always hit the database directly so they never act on stale data.
+// Versioned read cache.
+//
+// Project rows can be large (they embed milestones and uploaded files), so downloading all of
+// them on every dashboard poll overloads the database. Instead we keep every project in memory
+// together with its updated_at stamp. A refresh only asks the database for the tiny
+// (id, updated_at) index and re-downloads the few rows whose stamp changed. Concurrent
+// refreshes share one query. Cached project objects are shared: treat them as READ-ONLY.
 // ----------------------------------------------------------------------------
 
-let cachedProjects: { data: ProjectContract[]; timestamp: number } | null = null;
-let cachedTransactions: { data: TransactionRecord[]; timestamp: number } | null = null;
-const CACHE_TTL_MS = 5000;
-
-export function invalidateServerCache() {
-  cachedProjects = null;
-  cachedTransactions = null;
+interface CachedProject {
+  updatedAtMs: number;
+  project: ProjectContract;
 }
 
-async function getLiveProjects(): Promise<ProjectContract[]> {
-  const now = Date.now();
-  if (cachedProjects && now - cachedProjects.timestamp < CACHE_TTL_MS) {
-    return cachedProjects.data;
-  }
+let projectCache = new Map<string, CachedProject>();
+let projectCacheCheckedAt = 0;
+let projectCacheRefresh: Promise<void> | null = null;
+let cachedTransactions: { data: TransactionRecord[]; timestamp: number } | null = null;
+let transactionsRefresh: Promise<TransactionRecord[]> | null = null;
+const notificationCache = new Map<string, { at: number; data: NotificationItem[] }>();
+const CACHE_TTL_MS = 5000;
+const FULL_ROW_BATCH = 3; // rows per request (rows can be large)
+const FULL_ROW_CONCURRENCY = 3; // requests in flight at once during a cold load
+
+function toMs(value: unknown): number {
+  const t = Date.parse(String(value ?? ""));
+  return Number.isFinite(t) ? t : 0;
+}
+
+/** Marks cached data as due for re-validation (cheap: the next read only re-checks the id/updated_at index). */
+export function invalidateServerCache() {
+  projectCacheCheckedAt = 0;
+  cachedTransactions = null;
+  notificationCache.clear();
+}
+
+async function refreshProjectCache(): Promise<void> {
   const supabase = requireSupabase();
-  const { data, error } = await supabase.from("projects").select("*").order("updated_at", { ascending: false });
-  if (error || !data) {
-    console.error("Supabase getLiveProjects error:", error);
-    // Serve slightly stale data rather than failing the dashboard, but NEVER report an empty list on error.
-    if (cachedProjects) return cachedProjects.data;
+  const { data: index, error } = await supabase.from("projects").select("id, updated_at");
+  if (error || !index) {
+    console.error("Supabase project index error:", error);
+    if (projectCache.size > 0) {
+      projectCacheCheckedAt = Date.now(); // serve what we have for another interval instead of hammering a struggling database
+      return;
+    }
     throw new Error("Failed to load projects.");
   }
-  const mapped = data.map(rowToProject);
-  cachedProjects = { data: mapped, timestamp: now };
-  return mapped;
+
+  const next = new Map<string, CachedProject>();
+  const stale: string[] = [];
+  for (const row of index) {
+    const cached = projectCache.get(row.id);
+    if (cached && cached.updatedAtMs === toMs(row.updated_at)) next.set(row.id, cached);
+    else stale.push(row.id);
+  }
+
+  const batches: string[][] = [];
+  for (let i = 0; i < stale.length; i += FULL_ROW_BATCH) batches.push(stale.slice(i, i + FULL_ROW_BATCH));
+
+  // A few batches at a time: much faster on a cold start than one-by-one, without flooding the database.
+  for (let i = 0; i < batches.length; i += FULL_ROW_CONCURRENCY) {
+    await Promise.all(
+      batches.slice(i, i + FULL_ROW_CONCURRENCY).map(async (ids) => {
+        const { data, error: rowError } = await supabase.from("projects").select("*").in("id", ids);
+        if (rowError || !data) {
+          console.error("Supabase project rows error:", rowError);
+          for (const id of ids) {
+            const old = projectCache.get(id);
+            if (old) next.set(id, old);
+          }
+          return;
+        }
+        for (const row of data) next.set(row.id, { updatedAtMs: toMs(row.updated_at), project: rowToProject(row) });
+      })
+    );
+  }
+
+  projectCache = next;
+  projectCacheCheckedAt = Date.now();
+}
+
+async function ensureProjectCache(): Promise<void> {
+  if (projectCacheCheckedAt && Date.now() - projectCacheCheckedAt < CACHE_TTL_MS) return;
+  if (!projectCacheRefresh) {
+    projectCacheRefresh = refreshProjectCache().finally(() => {
+      projectCacheRefresh = null;
+    });
+  }
+  await projectCacheRefresh;
+}
+
+async function getLiveProjectEntries(): Promise<CachedProject[]> {
+  await ensureProjectCache();
+  return Array.from(projectCache.values()).sort((a, b) => b.updatedAtMs - a.updatedAtMs);
 }
 
 async function getLiveTransactions(): Promise<TransactionRecord[]> {
-  const now = Date.now();
-  if (cachedTransactions && now - cachedTransactions.timestamp < CACHE_TTL_MS) {
+  if (cachedTransactions && Date.now() - cachedTransactions.timestamp < CACHE_TTL_MS) {
     return cachedTransactions.data;
   }
-  const supabase = requireSupabase();
-  const { data, error } = await supabase.from("transactions").select("*").order("paid_at", { ascending: false });
-  if (error || !data) {
-    console.error("Supabase getLiveTransactions error:", error);
-    if (cachedTransactions) return cachedTransactions.data;
-    throw new Error("Failed to load transactions.");
+  if (!transactionsRefresh) {
+    transactionsRefresh = (async () => {
+      const supabase = requireSupabase();
+      const { data, error } = await supabase.from("transactions").select("*").order("paid_at", { ascending: false });
+      if (error || !data) {
+        console.error("Supabase getLiveTransactions error:", error);
+        if (cachedTransactions) return cachedTransactions.data;
+        throw new Error("Failed to load transactions.");
+      }
+      const mapped = data.map(rowToTransaction);
+      cachedTransactions = { data: mapped, timestamp: Date.now() };
+      return mapped;
+    })().finally(() => {
+      transactionsRefresh = null;
+    });
   }
-  const mapped = data.map(rowToTransaction);
-  cachedTransactions = { data: mapped, timestamp: now };
-  return mapped;
+  return transactionsRefresh;
 }
 
 // ----------------------------------------------------------------------------
@@ -289,21 +391,44 @@ async function mutateProject<T>(
 
   return withProjectLock(projectId, async () => {
     for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt++) {
-      const { data, error } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
-      if (error) throw new Error(`Failed to load project ${projectId}: ${error.message}`);
-      if (!data) return null;
+      // Cheap version stamp first; the (possibly multi-MB) row is only downloaded if our cached copy is out of date.
+      const { data: stamp, error: stampError } = await supabase
+        .from("projects")
+        .select("id, updated_at")
+        .eq("id", projectId)
+        .maybeSingle();
+      if (stampError) throw new Error(`Failed to load project ${projectId}: ${stampError.message}`);
+      if (!stamp) {
+        projectCache.delete(projectId);
+        return null;
+      }
 
-      const project = rowToProject(data);
+      let project: ProjectContract;
+      let versionStamp: string | null = stamp.updated_at ?? null;
+      const cached = projectCache.get(projectId);
+      if (cached && cached.updatedAtMs === toMs(stamp.updated_at)) {
+        project = structuredClone(cached.project); // the mutator edits its own copy
+      } else {
+        const { data, error } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
+        if (error) throw new Error(`Failed to load project ${projectId}: ${error.message}`);
+        if (!data) return null;
+        project = rowToProject(data);
+        versionStamp = data.updated_at ?? null;
+      }
+
       const result = await mutator(project);
       const row = projectToRow(project);
 
       let query = supabase.from("projects").update(row).eq("id", projectId);
-      if (data.updated_at) query = query.eq("updated_at", data.updated_at);
+      if (versionStamp) query = query.eq("updated_at", versionStamp);
       const { data: written, error: writeError } = await query.select("id");
       if (writeError) throw new Error(`Failed to save project ${projectId}: ${writeError.message}`);
 
       if (written && written.length > 0) {
-        invalidateServerCache();
+        // We just wrote this exact row, so the cache can hold it without re-downloading it.
+        projectCache.set(projectId, { updatedAtMs: toMs(row.updated_at), project });
+        cachedTransactions = null;
+        notificationCache.clear();
         return { project, result };
       }
       // Another writer changed the row between our read and write: reload and re-apply.
@@ -360,16 +485,24 @@ export const db = {
    * Never returns anything when no identity is supplied.
    */
   async getProjects(filter?: ProjectFilter): Promise<ProjectContract[]> {
+    return (await db.getProjectsWithVersion(filter)).projects;
+  },
+
+  /**
+   * The caller's projects plus a short "version" string that changes whenever any of them changes.
+   * Clients poll the version (tiny) and only download the projects when it differs.
+   */
+  async getProjectsWithVersion(filter?: ProjectFilter): Promise<{ projects: ProjectContract[]; version: string }> {
     const userId = filter?.userId?.trim();
     const userEmail = filter?.userEmail?.trim().toLowerCase();
     const userBaseCode = extractBaseCode(filter?.milestoneOSId?.trim().toUpperCase());
     const role = filter?.role;
     const status = filter?.status;
 
-    if (!userId && !userEmail && !userBaseCode) return [];
+    if (!userId && !userEmail && !userBaseCode) return { projects: [], version: "empty" };
 
-    const all = await getLiveProjects();
-    return all.filter((p) => {
+    const entries = await getLiveProjectEntries();
+    const mine = entries.filter(({ project: p }) => {
       if (status && p.status !== status) return false;
       if (p.status === "rejected" && status !== "rejected") return false;
 
@@ -383,17 +516,39 @@ export const db = {
       if (role === "freelancer") return isFreelancer;
       return isClient || isFreelancer;
     });
+
+    const hash = createHash("sha1");
+    for (const { project, updatedAtMs } of mine) hash.update(`${project.id}:${updatedAtMs};`);
+    return { projects: mine.map((e) => e.project), version: hash.digest("hex").slice(0, 16) };
   },
 
   /**
-   * Fresh read of a single project. NO access check is performed here —
-   * routes must authorise the caller (assertParticipant etc.) before using the result.
+   * One project, validated against the database with a tiny (id, updated_at) lookup so a large
+   * row is only downloaded when it actually changed. The returned object is shared: READ-ONLY.
+   * NO access check is performed here; routes must authorise the caller (assertParticipant etc.).
    */
   async getProjectById(id: string): Promise<ProjectContract | undefined> {
     const supabase = requireSupabase();
+    const { data: stamp, error: stampError } = await supabase
+      .from("projects")
+      .select("id, updated_at")
+      .eq("id", id)
+      .maybeSingle();
+    if (stampError) throw new Error(`Failed to load project: ${stampError.message}`);
+    if (!stamp) {
+      projectCache.delete(id);
+      return undefined;
+    }
+
+    const cached = projectCache.get(id);
+    if (cached && cached.updatedAtMs === toMs(stamp.updated_at)) return cached.project;
+
     const { data, error } = await supabase.from("projects").select("*").eq("id", id).maybeSingle();
     if (error) throw new Error(`Failed to load project: ${error.message}`);
-    return data ? rowToProject(data) : undefined;
+    if (!data) return undefined;
+    const project = rowToProject(data);
+    projectCache.set(id, { updatedAtMs: toMs(data.updated_at), project });
+    return project;
   },
 
   async getProjectByInvitationToken(token: string): Promise<ProjectContract | null> {
@@ -1002,6 +1157,8 @@ export const db = {
 
   async getNotifications(filter: { userId?: string }): Promise<NotificationItem[]> {
     if (!filter.userId) return [];
+    const cached = notificationCache.get(filter.userId);
+    if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.data;
     const supabase = requireSupabase();
     const { data, error } = await supabase
       .from("notifications")
@@ -1009,7 +1166,7 @@ export const db = {
       .eq("user_id", filter.userId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(`Failed to load notifications: ${error.message}`);
-    return (data || []).map((n) => ({
+    const mapped = (data || []).map((n) => ({
       id: n.id,
       title: n.title,
       message: n.message,
@@ -1020,6 +1177,8 @@ export const db = {
       userId: n.user_id || undefined,
       isDemo: Boolean(n.is_demo),
     }));
+    notificationCache.set(filter.userId, { at: Date.now(), data: mapped });
+    return mapped;
   },
 
   async createNotification(item: NotificationItem): Promise<NotificationItem> {
@@ -1041,6 +1200,7 @@ export const db = {
         { onConflict: "id" }
       );
       if (error) console.warn("Could not create notification:", error.message);
+      notificationCache.clear();
     }
     return item;
   },
@@ -1049,12 +1209,14 @@ export const db = {
   async markNotificationRead(id: string, userId: string): Promise<boolean> {
     const supabase = requireSupabase();
     const { error } = await supabase.from("notifications").update({ unread: false }).eq("id", id).eq("user_id", userId);
+    notificationCache.clear();
     return !error;
   },
 
   async markAllNotificationsRead(userId: string): Promise<boolean> {
     const supabase = requireSupabase();
     const { error } = await supabase.from("notifications").update({ unread: false }).eq("user_id", userId);
+    notificationCache.clear();
     return !error;
   },
 };

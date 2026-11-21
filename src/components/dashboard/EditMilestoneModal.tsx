@@ -49,7 +49,9 @@ export default function EditMilestoneModal({
       setHasMutualConsent(false);
       setFormError(null);
     }
-  }, [milestone]);
+    // Fill the form once per milestone; a refreshed copy from the server must not wipe what is being typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [milestone?.id]);
 
   if (!isOpen || !project || !milestone) return null;
 

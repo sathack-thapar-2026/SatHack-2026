@@ -609,7 +609,8 @@ export default function InvoiceModal({
     return () => {
       isCancelled = true;
     };
-  }, [isOpen, project, milestone, transactionId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, project?.id, milestone?.id, transactionId]);
 
   if (!isOpen || !project || !milestone) return null;
 

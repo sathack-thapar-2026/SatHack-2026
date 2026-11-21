@@ -570,7 +570,10 @@ function AuthForm({ hasEntered, mouseCardTilt }: AuthFormProps) {
               </label>
               <button
                 type="button"
-                onClick={() => setSuccessMsg("Password reset instructions have been sent to your email address.")}
+                onClick={() => {
+                  setSuccessMsg(null);
+                  setErrorMsg("Password reset by email is not available yet. Please contact the workspace owner to reset your password.");
+                }}
                 className="text-[#087FBE] dark:text-[#23C8E8] hover:underline font-semibold cursor-pointer"
               >
                 Forgot password?
