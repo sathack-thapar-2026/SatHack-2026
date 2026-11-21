@@ -73,16 +73,16 @@ export default function WorkflowSection() {
   return (
     <section
       id="how-it-works"
-      className="relative py-20 sm:py-28 px-4 sm:px-6 lg:px-8 bg-slate-50/70 dark:bg-white/[0.02] backdrop-blur-[2px] transition-colors overflow-hidden border-y border-slate-200/60 dark:border-white/5"
+      className="relative py-20 sm:py-28 px-4 sm:px-6 lg:px-8 bg-transparent transition-colors duration-500 overflow-hidden border-y border-[#172B43]/10 dark:border-white/[0.06]"
     >
       <div className="mx-auto max-w-7xl">
         {/* Section Header */}
         <ScrollReveal direction="up" delay={50}>
           <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-14">
-            <h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#172B43] dark:text-[#F4F7FA] tracking-tight">
               Simple Steps to Fair Payments
             </h2>
-            <p className="mt-3 text-base text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            <p className="mt-3 text-base text-[#526B82] dark:text-[#AAB7B5] max-w-2xl mx-auto leading-relaxed">
               No stress, no misunderstandings, and no lost money. Watch how work moves from agreed specifications to verified milestone settlements.
             </p>
           </div>

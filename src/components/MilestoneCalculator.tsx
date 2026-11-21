@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldCheck, Layers } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 import MilestoneWheel from "@/components/MilestoneWheel";
 
@@ -41,15 +40,15 @@ export default function MilestoneCalculator() {
   ];
 
   return (
-    <section id="calculator" className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8 bg-blue-50/20 dark:bg-white/[0.03] backdrop-blur-[2px] transition-colors">
+    <section id="calculator" className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8 transition-colors duration-500">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
         <ScrollReveal direction="up" delay={50}>
           <div className="text-center max-w-2xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#172B43] dark:text-[#F4F7FA] tracking-tight">
               See How Your Money Is Protected
             </h2>
-            <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-300">
+            <p className="mt-3 text-sm sm:text-base text-[#526B82] dark:text-[#AAB7B5]">
               Never pay 100% upfront to someone you just met. Pay step-by-step as real work gets completed and verified.
             </p>
           </div>
@@ -57,28 +56,28 @@ export default function MilestoneCalculator() {
 
         {/* Budget Slider Card */}
         <ScrollReveal direction="up" delay={150}>
-          <div className="mt-10 mx-auto max-w-xl rounded-3xl border border-slate-200/90 bg-white/95 p-7 dark:border-slate-800 dark:bg-[#131B2E]/95 shadow-xl shadow-slate-200/50 dark:shadow-none backdrop-blur-md">
+          <div className="mt-10 mx-auto max-w-xl rounded-3xl border border-[#172B43]/10 dark:border-white/10 bg-white/85 dark:bg-[#131F33]/85 p-7 shadow-xl dark:shadow-2xl shadow-black/15 dark:shadow-black/50 backdrop-blur-xl transition-colors duration-300">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#526B82] dark:text-[#AAB7B5]">
                 Total Project Budget
               </span>
-              <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-0.5 text-xs font-bold dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex rounded-xl border border-[#172B43]/10 dark:border-white/10 bg-slate-100 dark:bg-[#0E1624] p-0.5 text-xs font-bold">
                 <button
                   onClick={() => setCurrency("INR")}
-                  className={`px-3 py-1 rounded-lg transition-colors ${
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
                     currency === "INR"
-                      ? "bg-gradient-to-r from-[#004C8F] to-[#0070BA] text-white shadow-sm"
-                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                      ? "bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] text-white shadow-sm"
+                      : "text-[#526B82] hover:text-[#172B43] dark:text-[#AAB7B5] dark:hover:text-[#F2F4F0]"
                   }`}
                 >
                   ₹ INR
                 </button>
                 <button
                   onClick={() => setCurrency("USD")}
-                  className={`px-3 py-1 rounded-lg transition-colors ${
+                  className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
                     currency === "USD"
-                      ? "bg-gradient-to-r from-[#004C8F] to-[#0070BA] text-white shadow-sm"
-                      : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+                      ? "bg-gradient-to-r from-[#0E7490] via-[#0284C7] to-[#087FBE] text-white shadow-sm"
+                      : "text-[#526B82] hover:text-[#172B43] dark:text-[#AAB7B5] dark:hover:text-[#F2F4F0]"
                   }`}
                 >
                   $ USD
@@ -87,10 +86,10 @@ export default function MilestoneCalculator() {
             </div>
 
             <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-4xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">
+              <span className="text-4xl font-black text-[#172B43] dark:text-[#F4F7FA] tabular-nums tracking-tight">
                 {symbol}{currentBudget.toLocaleString()}
               </span>
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-semibold text-[#526B82] dark:text-[#AAB7B5]">
                 split into 4 verified stages
               </span>
             </div>
@@ -102,10 +101,10 @@ export default function MilestoneCalculator() {
               step="5000"
               value={budget}
               onChange={(e) => setBudget(Number(e.target.value))}
-              className="w-full mt-6 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-[#0070BA]"
+              className="w-full mt-6 h-2 bg-slate-200 dark:bg-[#1B2B3E] rounded-lg appearance-none cursor-pointer accent-[#078FBE] dark:accent-[#58C7E8]"
             />
 
-            <div className="mt-2.5 flex justify-between text-[11px] font-semibold text-slate-400">
+            <div className="mt-2.5 flex justify-between text-[11px] font-semibold text-[#788DA0] dark:text-[#AAB7B5]/80">
               <span>{symbol}{Math.round(20000 * rateMultiplier).toLocaleString()} (Smaller Website)</span>
               <span>{symbol}{Math.round(150000 * rateMultiplier).toLocaleString()} (Full Online Platform)</span>
             </div>

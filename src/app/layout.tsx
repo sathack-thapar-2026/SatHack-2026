@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, JetBrains_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 
 const jakartaSans = Plus_Jakarta_Sans({
@@ -12,6 +12,12 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
   weight: ["400", "500"],
+});
+
+const newsreader = Newsreader({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  style: ["italic", "normal"],
 });
 
 export const metadata: Metadata = {
@@ -56,7 +62,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${jakartaSans.variable} ${jetbrainsMono.variable} font-sans min-h-screen bg-[var(--bg-main)] text-slate-900 antialiased selection:bg-blue-500/20 selection:text-blue-700 dark:bg-[#0B0F19] dark:text-slate-100 dark:selection:text-sky-300 transition-colors duration-200`}
+        className={`${jakartaSans.variable} ${jetbrainsMono.variable} ${newsreader.variable} font-sans min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] antialiased selection:bg-cyan-500/20 selection:text-cyan-700 dark:selection:text-cyan-300 transition-colors duration-500`}
       >
         {children}
       </body>
