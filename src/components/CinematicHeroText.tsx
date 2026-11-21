@@ -56,7 +56,7 @@ export default function CinematicHeroText() {
         <span
           className={`inline-block transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             w.isItalic
-              ? "font-serif italic font-semibold dark:font-normal tracking-wide bg-gradient-to-r from-[#0C4A6E] via-[#075985] to-[#115E59] dark:from-[#58C7E8] dark:via-[#8EE3F5] dark:to-[#B6F5EE] bg-clip-text text-transparent drop-shadow-[0_0_6px_rgba(255,255,255,0.95)] dark:drop-shadow-[0_0_24px_rgba(88,199,232,0.45)]"
+              ? "font-serif italic font-medium dark:font-normal tracking-wide bg-gradient-to-r from-[#0C4A6E] via-[#075985] to-[#115E59] dark:from-[#58C7E8] dark:via-[#8EE3F5] dark:to-[#B6F5EE] bg-clip-text text-transparent drop-shadow-[0_0_6px_rgba(255,255,255,0.95)] dark:drop-shadow-[0_0_24px_rgba(88,199,232,0.45)]"
               : "text-[#0F1D2E] dark:text-[#F8FAFC] font-black tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)] dark:drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]"
           }`}
           style={{
@@ -75,7 +75,7 @@ export default function CinematicHeroText() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl text-center select-none">
+    <div className="mx-auto max-w-6xl text-center select-none">
       {/* Eyebrow Pill */}
       <div
         className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/90 dark:bg-[#131F33]/90 border border-[#0284C7]/30 dark:border-[#58C7E8]/30 backdrop-blur-md shadow-md shadow-cyan-900/5 dark:shadow-black/40 mb-6 transition-all duration-700"
@@ -104,7 +104,7 @@ export default function CinematicHeroText() {
         </div>
 
         {/* Line 3 — Serif Italic Accent Phrase */}
-        <div className="block mt-1 sm:mt-2">
+        <div className="block mt-1 sm:mt-2 sm:whitespace-nowrap sm:text-[min(4.5rem,calc((100vw_-_4rem)/15))]">
           {line3.map((w, i) => renderWord(w, `l3-${i}`))}
         </div>
       </h1>
