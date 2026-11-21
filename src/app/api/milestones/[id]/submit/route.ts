@@ -160,7 +160,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: "Work submitted and verified by MilestoneOS AI Engine.",
+      message: "Work submitted and verified by PayZorr AI Engine.",
       submission,
       audit,
       milestone: result.milestone,

@@ -1,0 +1,50 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 740 460' width='740' height='460'>
+  <!-- Crisp Card Container (Dark Aesthetic) -->
+  <rect width='738' height='458' x='1' y='1' rx='22' ry='22' fill='#0D1527' stroke='#1E293B' stroke-width='1.5'/>
+
+  <!-- Cyan Top Accent Indicator (Dark Mode) -->
+  <path d='M 22 1 L 718 1 A 22 22 0 0 1 739 22 L 739 26 L 1 26 L 1 22 A 22 22 0 0 1 22 1 Z' fill='#38BDF8' fill-opacity='0.25'/>
+  <line x1='1' y1='26' x2='739' y2='26' stroke='#1E293B' stroke-width='1'/>
+
+  <!-- Top Stage Badge -->
+  <g transform='translate(48, 44)'>
+    <rect width='84' height='25' rx='7' fill='#0B2545' stroke='#1E4976' stroke-width='1'/>
+    <text x='11' y='16.5' fill='#38BDF8' font-size='11' font-weight='800' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif' letter-spacing='0.5'>STAGE 02</text>
+  </g>
+
+  <!-- Title & Subtitle -->
+  <text x='48' y='114' fill='#F8FAFC' font-size='25' font-weight='800' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif' letter-spacing='-0.3'>Submit Code &amp; Live Previews</text>
+  <text x='48' y='142' fill='#94A3B8' font-size='13.5' font-weight='450' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Freelancers submit verifiable deliverables directly instead of vague status messages.</text>
+
+  <!-- Divider -->
+  <line x1='48' y1='168' x2='692' y2='168' stroke='#1E293B' stroke-width='1'/>
+
+  <!-- Clean Deliverables Box -->
+  <g transform='translate(48, 186)'>
+    <rect width='644' height='162' rx='14' fill='#131D33' stroke='#1E293B' stroke-width='1'/>
+    
+    <!-- GitHub Repo Deliverable -->
+    <g transform='translate(22, 22)'>
+      <text x='0' y='14' fill='#F1F5F9' font-size='14' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Source Code Repository</text>
+      <text x='0' y='32' fill='#38BDF8' font-size='12.5' font-family='monospace'>github.com/freelancer/storefront-app (Pull Request #14)</text>
+      <rect x='504' y='6' width='98' height='24' rx='6' fill='#0B2545' stroke='#1E4976' stroke-width='1'/>
+      <text x='518' y='22' fill='#38BDF8' font-size='11' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Verified PR</text>
+    </g>
+
+    <line x1='22' y1='76' x2='622' y2='76' stroke='#1E293B' stroke-width='1'/>
+
+    <!-- Live Staging Demo -->
+    <g transform='translate(22, 98)'>
+      <text x='0' y='14' fill='#F1F5F9' font-size='14' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Interactive Staging Preview</text>
+      <text x='0' y='32' fill='#38BDF8' font-size='12.5' font-family='monospace'>https://staging-storefront.dev/preview</text>
+      <rect x='504' y='6' width='98' height='24' rx='6' fill='#062817' stroke='#14532D' stroke-width='1'/>
+      <text x='520' y='22' fill='#4ADE80' font-size='11' font-weight='700' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>200 OK Live</text>
+    </g>
+  </g>
+
+  <!-- Bottom Summary Note -->
+  <g transform='translate(48, 382)'>
+    <rect width='644' height='36' rx='9' fill='#0B1E38' stroke='#173B67' stroke-width='1'/>
+    <text x='20' y='22.5' fill='#38BDF8' font-size='12' font-weight='600' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif'>Multi-modal submission • Code, live preview links, and documentation</text>
+  </g>
+</svg>

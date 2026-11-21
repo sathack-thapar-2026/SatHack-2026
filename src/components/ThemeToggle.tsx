@@ -9,7 +9,7 @@ export default function ThemeToggle() {
 
   useEffect(() => {
     // Check saved preference or default to light
-    const savedTheme = localStorage.getItem("milestoneos-theme") as "light" | "dark" | null;
+    const savedTheme = (localStorage.getItem("payzorr-theme") || localStorage.getItem("milestoneos-theme")) as "light" | "dark" | null;
     const initialTheme = savedTheme || "light";
     setTheme(initialTheme);
     if (initialTheme === "dark") {
@@ -23,6 +23,7 @@ export default function ThemeToggle() {
   const toggleTheme = () => {
     const nextTheme = theme === "light" ? "dark" : "light";
     setTheme(nextTheme);
+    localStorage.setItem("payzorr-theme", nextTheme);
     localStorage.setItem("milestoneos-theme", nextTheme);
     if (nextTheme === "dark") {
       document.documentElement.classList.add("dark");

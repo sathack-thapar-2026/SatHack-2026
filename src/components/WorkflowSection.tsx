@@ -1,9 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import ScrollReveal from "@/components/ScrollReveal";
 import TiltedGridHero from "@/components/TiltedGridHero";
 
-const WORKFLOW_CARDS = [
+const LIGHT_CARDS = [
   {
     src: "/cards/stage1.svg",
     alt: "STAGE 01: Agree on Stages & Budgets",
@@ -22,11 +23,53 @@ const WORKFLOW_CARDS = [
   },
   {
     src: "/cards/stage5.svg",
-    alt: "STAGE 05: Invoices & Dispute-Proof Ledger",
+    alt: "STAGE 05: Invoices & Dispute-Proof Records",
+  },
+];
+
+const DARK_CARDS = [
+  {
+    src: "/cards/stage1-dark.svg",
+    alt: "STAGE 01: Agree on Stages & Budgets",
+  },
+  {
+    src: "/cards/stage2-dark.svg",
+    alt: "STAGE 02: Submit Work with Real Proof",
+  },
+  {
+    src: "/cards/stage3-dark.svg",
+    alt: "STAGE 03: Automated Work Verification",
+  },
+  {
+    src: "/cards/stage4-dark.svg",
+    alt: "STAGE 04: Approve & Release Payments",
+  },
+  {
+    src: "/cards/stage5-dark.svg",
+    alt: "STAGE 05: Invoices & Dispute-Proof Records",
   },
 ];
 
 export default function WorkflowSection() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const checkDark = () => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    };
+    checkDark();
+
+    const observer = new MutationObserver(checkDark);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const cards = isDark ? DARK_CARDS : LIGHT_CARDS;
+
   return (
     <section
       id="how-it-works"
@@ -48,8 +91,8 @@ export default function WorkflowSection() {
         {/* 3D Cylindrical Curved Infinite Animation Strip */}
         <div className="relative w-full h-[460px] sm:h-[520px] md:h-[560px] flex items-center justify-center">
           <TiltedGridHero
-            images={WORKFLOW_CARDS}
-            speed={4.5}
+            images={cards}
+            speed={6.5}
             tileHeight={76}
             aspectRatio={16 / 10}
             gap={8}
