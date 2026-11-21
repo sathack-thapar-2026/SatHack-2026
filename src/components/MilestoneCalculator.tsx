@@ -29,7 +29,7 @@ export default function MilestoneCalculator() {
       index: 3,
       percent: 25,
       title: "Online Payments Setup",
-      desc: "PayPal checkout so your customers can buy products or pay you.",
+      desc: "Secure checkout so your customers can buy products or pay you.",
     },
     {
       index: 4,
@@ -147,7 +147,7 @@ export default function MilestoneCalculator() {
 
                   <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-semibold text-[#0070BA] dark:text-sky-400 flex items-center gap-1.5">
                     <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-                    <span>Paid via PayPal after review</span>
+                    <span>Paid safely after review</span>
                   </div>
                 </div>
               </ScrollReveal>

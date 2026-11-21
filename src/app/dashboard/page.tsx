@@ -311,10 +311,10 @@ function DashboardInner() {
         <footer className="py-6 text-center text-xs text-slate-500 dark:text-slate-400 border-t border-slate-200/80 dark:border-white/10 bg-white/40 dark:bg-transparent backdrop-blur-xs">
           <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
             <span>
-              MilestoneOS • Simple Milestone Payments
+              Simple Milestone Payments
             </span>
             <span className="text-slate-400">
-              Milestone Escrow & Settlements • Powered by PayPal
+              Milestone Escrow & Protected Settlements
             </span>
           </div>
         </footer>

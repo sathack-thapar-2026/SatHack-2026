@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
-import SimpleInteractiveDemo from "@/components/SimpleInteractiveDemo";
 import WorkflowSection from "@/components/WorkflowSection";
 import MilestoneCalculator from "@/components/MilestoneCalculator";
 import WhoItsFor from "@/components/WhoItsFor";
@@ -8,7 +7,7 @@ import Footer from "@/components/Footer";
 import WebThreadsController from "@/components/WebThreadsController";
 import ScrollReveal from "@/components/ScrollReveal";
 import HeroTextFlyIn from "@/components/HeroTextFlyIn";
-import { ArrowRight, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export default function HomePage() {
   return (
@@ -61,52 +60,14 @@ export default function HomePage() {
               </div>
             </ScrollReveal>
 
-            {/* Trust Points - Clean, Natural Language without AI pill capsules */}
-            <ScrollReveal direction="up" delay={620} distance={20}>
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-[#0070BA] dark:text-sky-400 shrink-0" />
-                  Secure PayPal Payments
-                </span>
-                <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-[#0070BA] dark:text-sky-400 shrink-0" />
-                  Automatic Work Review
-                </span>
-                <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-[#0070BA] dark:text-sky-400 shrink-0" />
-                  Pay Only When Satisfied
-                </span>
-              </div>
-            </ScrollReveal>
+
           </div>
         </section>
 
         {/* 1. THREE SIMPLE STEPS (HOW IT WORKS) */}
         <WorkflowSection />
 
-        {/* 2. SEE IT IN ACTION (INTERACTIVE DEMO) - DIRECTLY BELOW HOW IT WORKS */}
-        <section id="demo" className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8 bg-white/70 dark:bg-transparent backdrop-blur-[2px] transition-colors">
-          <div className="mx-auto max-w-5xl">
-            <ScrollReveal direction="up" delay={50}>
-              <div className="text-center max-w-2xl mx-auto mb-12">
-                <h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                  See It In Action
-                </h2>
-                <p className="mt-3 text-base text-slate-600 dark:text-slate-300">
-                  Try this live milestone simulator. Toggle between completed and missing work to see how payments stay protected before any money moves.
-                </p>
-              </div>
-            </ScrollReveal>
-
-            <ScrollReveal direction="up" delay={150}>
-              <SimpleInteractiveDemo />
-            </ScrollReveal>
-          </div>
-        </section>
-
-        {/* 3. INTERACTIVE MILESTONE CALCULATOR */}
+        {/* 2. INTERACTIVE MILESTONE CALCULATOR */}
         <MilestoneCalculator />
 
         {/* 4. FOR CLIENTS & FREELANCERS */}

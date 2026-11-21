@@ -125,7 +125,7 @@ export default function ProjectWorkspace({
                   Project Completed & 100% Paid Out
                 </strong>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  PayPal Settled
+                  Fully Settled
                 </span>
               </div>
               <p className="text-slate-600 dark:text-slate-300 text-xs mt-0.5">
@@ -694,7 +694,7 @@ export default function ProjectWorkspace({
                               <div className="flex items-center gap-3">
                                 <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                  <span>Paid via PayPal</span>
+                                  <span>Paid & Settled</span>
                                 </span>
                                 {onOpenInvoice && (
                                   <button

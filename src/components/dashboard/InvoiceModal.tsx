@@ -410,8 +410,8 @@ function buildCleanInvoiceHtml(invoice: InvoiceData): string {
     <div class="bottom-grid">
       <div class="settlement-info">
         <div><span class="settlement-label">Payment Method:</span> <span class="settlement-val">${invoice.paymentMethod}</span></div>
-        <div><span class="settlement-label">PayPal Transaction ID:</span> <span class="mono settlement-val">${invoice.paypalTransactionId}</span></div>
-        <div><span class="settlement-label">Escrow Settlement:</span> <span class="settlement-val">Direct Mutual Release via PayPal Sandbox</span></div>
+        <div><span class="settlement-label">Transaction ID:</span> <span class="mono settlement-val">${invoice.paypalTransactionId}</span></div>
+        <div><span class="settlement-label">Escrow Settlement:</span> <span class="settlement-val">Direct Mutual Release via Secure Escrow</span></div>
         <div><span class="settlement-label">Ledger Verification Hash:</span> <span class="mono" style="font-size: 10px;">${invoice.cryptographicHash}</span></div>
       </div>
 
@@ -520,7 +520,7 @@ export default function InvoiceModal({
                 amount: milestone?.amount,
                 currency: milestone?.currency || "USD",
                 status: "completed",
-                method: "PayPal Sandbox Escrow Settlement",
+                method: "Verified Escrow Settlement",
               },
             },
           }),
@@ -590,7 +590,7 @@ export default function InvoiceModal({
           dueDate: milestone.dueDate || "Completed",
           status: "PAID",
           paypalTransactionId: tx,
-          paymentMethod: "PayPal Sandbox Escrow Settlement",
+          paymentMethod: "Verified Escrow Settlement",
           client: {
             name: project.client.name,
             email: project.client.email,
@@ -672,10 +672,10 @@ export default function InvoiceModal({
   const handleCopySummary = () => {
     if (!invoice) return;
     const sym = (invoice.currency || "USD").toUpperCase() === "INR" ? "₹" : "$";
-    const summary = `MilestoneOS Official Invoice
+    const summary = `Official Invoice
 Invoice Number: ${invoice.invoiceNumber}
-Status: ${invoice.status} via PayPal
-PayPal Transaction ID: ${invoice.paypalTransactionId}
+Status: ${invoice.status} via Escrow
+Transaction ID: ${invoice.paypalTransactionId}
 Payment Date: ${invoice.paymentDate}
 
 Project: ${invoice.projectTitle}
@@ -775,7 +775,7 @@ Settled securely via MilestoneOS Mutual Escrow.`;
                     Compiling Settlement Invoice...
                   </h4>
                   <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-0.5">
-                    Formatting project deliverables, contract terms, and PayPal settlement confirmation.
+                    Formatting project deliverables, contract terms, and settlement confirmation.
                   </p>
                 </div>
               </div>
@@ -922,7 +922,7 @@ Settled securely via MilestoneOS Mutual Escrow.`;
                       <span className="font-semibold text-slate-900">{invoice.paymentMethod}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-slate-500 font-medium">PayPal Transaction ID:</span>
+                      <span className="text-slate-500 font-medium">Transaction ID:</span>
                       <button
                         type="button"
                         onClick={() => handleCopyTxId(invoice.paypalTransactionId)}

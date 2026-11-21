@@ -98,7 +98,7 @@ export default function WhoItsFor() {
                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0 mt-0.5">
                       <Check className="h-3.5 w-3.5" />
                     </div>
-                    <span><strong>Fast PayPal payouts:</strong> Money is deposited directly to your PayPal account upon approval.</span>
+                    <span><strong>Fast payouts:</strong> Money is deposited directly to your account upon approval.</span>
                   </li>
                 </ul>
               </div>

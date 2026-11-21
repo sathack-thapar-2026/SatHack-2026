@@ -82,7 +82,7 @@ export default function CompletedProjectModal({
                 ${project.totalPaid.toLocaleString()} USD
               </span>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block mt-0.5">
-                100% via PayPal Sandbox
+                100% Fully Settled
               </span>
             </div>
 
@@ -207,7 +207,7 @@ export default function CompletedProjectModal({
                       <th className="p-3">Stage / Milestone</th>
                       <th className="p-3">Amount</th>
                       <th className="p-3">Date Paid</th>
-                      <th className="p-3">PayPal Transaction ID</th>
+                      <th className="p-3">Transaction ID</th>
                       <th className="p-3 text-right">Payment Status</th>
                     </tr>
                   </thead>

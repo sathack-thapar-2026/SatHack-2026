@@ -110,7 +110,7 @@ export default function PayPalPaymentModal({
           <div className="flex items-center gap-2">
             <PayPalIcon className="h-5 w-5" />
             <h3 className="font-bold text-slate-900 dark:text-white text-base">
-              PayPal Sandbox Checkout
+              Secure Escrow Checkout
             </h3>
           </div>
 
@@ -135,13 +135,13 @@ export default function PayPalPaymentModal({
             <div>
               <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                 <ShieldCheck className="h-3.5 w-3.5" />
-                Verified PayPal Capture Completed
+                Verified Escrow Settlement Completed
               </span>
               <h4 className="text-2xl font-black text-slate-900 dark:text-white mt-2 font-mono">
                 ${verifiedReceipt.amount.toLocaleString()}.00 {verifiedReceipt.currency}
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Settled to {project.freelancer.name} via PayPal Sandbox Escrow
+                Settled to {project.freelancer.name} via Verified Escrow
               </p>
             </div>
 

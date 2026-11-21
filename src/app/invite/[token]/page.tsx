@@ -257,7 +257,7 @@ function InvitePageContent({ params }: InvitePageProps) {
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200/80 dark:border-white/10">
               <span className="text-[10px] uppercase font-bold text-slate-400 block">Payment Escrow</span>
               <span className="font-bold text-sm text-[#0070BA] dark:text-sky-300 block mt-0.5">
-                PayPal Sandbox Protected
+                Protected Escrow
               </span>
             </div>
           </div>
@@ -320,7 +320,7 @@ function InvitePageContent({ params }: InvitePageProps) {
           <div className="p-3.5 rounded-2xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/40 text-[11px] text-slate-600 dark:text-slate-400 flex items-start gap-2">
             <ShieldCheck className="h-4 w-4 text-[#0070BA] shrink-0 mt-0.5" />
             <p>
-              By clicking <strong>Accept Proposal</strong>, this project is bound to your account (<strong>{currentProfile.name}</strong>, ID: <span className="font-mono font-bold text-slate-900 dark:text-white">{currentProfile.milestoneOSId}</span>). Stage 01 will become active, and payments will be managed through PayPal sandbox escrow.
+              By clicking <strong>Accept Proposal</strong>, this project is bound to your account (<strong>{currentProfile.name}</strong>, ID: <span className="font-mono font-bold text-slate-900 dark:text-white">{currentProfile.milestoneOSId}</span>). Stage 01 will become active, and payments will be managed through secure milestone escrow.
             </p>
           </div>
         </div>
@@ -350,7 +350,7 @@ function InvitePageContent({ params }: InvitePageProps) {
 
       {/* Bottom Footer Note */}
       <div className="max-w-3xl mx-auto w-full text-center pt-6 text-[11px] text-slate-400">
-        MilestoneOS • Neutral Mutual Agreement & PayPal Escrow Platform
+        Neutral Mutual Agreement & Milestone Protection Platform
       </div>
     </div>
   );

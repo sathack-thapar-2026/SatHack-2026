@@ -1741,7 +1741,7 @@ export function DashboardProvider({
       }),
     }).catch((err) => console.warn("Could not sync milestone approval to API:", err));
 
-    showToast(`"${milestoneTitle}" approved! You can now release payment via PayPal.`, "success");
+    showToast(`"${milestoneTitle}" approved! You can now release payment.`, "success");
   };
 
   const setMilestoneAudit = (
@@ -1865,8 +1865,8 @@ export function DashboardProvider({
               timestamp: "Just now",
               actor: project.client.name,
               actorRole: "paypal",
-              action: `Completed payment of $${paidAmount.toLocaleString()} USD via PayPal Sandbox`,
-              details: `PayPal Transaction: ${txId}`,
+              action: `Completed payment of $${paidAmount.toLocaleString()} USD via Escrow`,
+              details: `Transaction: ${txId}`,
               milestoneTitle,
             },
             ...project.activityLog,
@@ -1896,7 +1896,7 @@ export function DashboardProvider({
     };
     setTransactions((prev) => [newTx, ...prev]);
 
-    showToast(`Payment of $${paidAmount.toLocaleString()} USD completed via PayPal Sandbox!`, "success");
+    showToast(`Payment of $${paidAmount.toLocaleString()} USD completed successfully!`, "success");
     return txId;
   };
 

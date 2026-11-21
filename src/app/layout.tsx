@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MilestoneOS — Verified Freelance Milestones & PayPal Payouts",
+  title: "MilestoneOS — Verified Freelance Milestones & Safe Payouts",
   description:
     "Work completed. Progress verified. Payments made with confidence. The friendly milestone escrow platform for freelancers and clients.",
   keywords: [
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     "Freelance Payment Protection",
     "AI Project Verification",
     "Freelancer Escrow",
-    "PayPal Integration",
+    "Secure Settlements",
   ],
 };
 
